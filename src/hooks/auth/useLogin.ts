@@ -1,8 +1,8 @@
-// hooks/useLogin.ts
+// src/hooks/auth/useLogin.ts
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
-import { LoginForm, OAuthProvider } from '../../types/auth';
+import type { LoginForm, OAuthProvider } from '../../types/auth';
 
 export const useLogin = () => {
   const navigate = useNavigate();
@@ -80,14 +80,19 @@ export const useLogin = () => {
   };
 
   return {
+    // 상태
     form,
     error,
     loading,
     rememberMe,
     saveId,
+    
+    // 상태 변경 함수
     setRememberMe,
     setSaveId,
     handleChange,
+    
+    // 액션 함수
     handleLogin,
     redirectToOAuth,
     handleRegisterClick
