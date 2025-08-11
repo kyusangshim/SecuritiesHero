@@ -1,4 +1,5 @@
 // src/hooks/auth/useOAuthSuccess.ts
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
@@ -16,7 +17,8 @@ export const useOAuthSuccess = () => {
         setProcessingState('loading');
         setMessage('소셜 로그인 처리 중...');
 
-        const response = await axios.get('/auth/oauth/tokens');
+        // ✅ [수정] GET /auth/oauth/tokens -> POST /auth/refresh 로 변경
+        const response = await axios.post('/auth/refresh', {});
         const { accessToken } = response.data;
 
         if (accessToken) {
