@@ -41,13 +41,13 @@ export const useMainPage = () => {
 
   // 챗봇 페이지로 이동
   const handleChatbotClick = () => {
-    navigate('/chatbot');
+    navigate('/dartviewer');
     setShowSideMenu(false);
   };
 
   // 증권 버튼 클릭 (챗봇으로 이동)
   const handleSecurityClick = () => {
-    navigate('/chatbot');
+    navigate('/dartviewer');
   };
 
   // 메뉴 외부 클릭으로 닫기
