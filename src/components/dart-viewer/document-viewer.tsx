@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, Loader2, Plus, Home  } from 'lucide-react'
 import { Button } from './ui/button'
 import { TableOfContents } from './table-of-contents'
 import { DocumentContent } from './document-content'
@@ -17,9 +18,15 @@ import {
 import { mockDocumentData, DocumentSection, getSectionKeyFromId } from '../../data/dart-viewer/mockDocumentData'
 
 export function DocumentViewer() {
-  const [selectedSection, setSelectedSection] = useState<string>('1')
+  const navigate = useNavigate()
+
+  const [selectedSection, setSelectedSection] = useState<string>(() => {
+    const saved = localStorage.getItem("selectedSection")
+    return saved ?? "1"
+  })
+
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false)
-  const [leftPanelWidth, setLeftPanelWidth] = useState(25)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(20)
   const [isDragging, setIsDragging] = useState(false)
   const [startX, setStartX] = useState(0)
   const [startWidth, setStartWidth] = useState(25)
@@ -35,6 +42,11 @@ export function DocumentViewer() {
     new Set(['3', '6', '7', '14', '21', '22', '28', '36', '47', '50', '55', '60', '66'])
   )
 
+  useEffect(() => {
+    if (selectedSection) {
+      localStorage.setItem('selectedSection', selectedSection)
+    }
+  }, [selectedSection])
 
   // 프로젝트 상태 로드
   useEffect(() => {
@@ -44,7 +56,6 @@ export function DocumentViewer() {
         await initializeProject()
         
         const state = await getProjectState()
-        console.log(state)
         setCurrentVersion(state.currentVersion)
         setModifiedSections(state.modifiedSections)
         
@@ -133,12 +144,26 @@ export function DocumentViewer() {
 
   const currentSection = findSectionById(mockDocumentData, selectedSection)
 
+  const handleGoHome = () => {
+    navigate('/main')
+  }
+
+
   const toggleLeftPanel = () => {
     setIsLeftPanelCollapsed(!isLeftPanelCollapsed)
   }
 
-  const handleSectionModified = (sectionId: string, updatedHTML: string) => {
-    setModifiedSections(prev => new Set([...prev, sectionId]))
+  const handleSectionModified = async (sectionId: string, updatedHTML: string) => {
+    const newModifiedSections = new Set([...modifiedSections, sectionId])
+    setModifiedSections(newModifiedSections)
+
+    await fetch('http://localhost:8000/versions/modified-update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        modifiedSections: Array.from(newModifiedSections) // Set → 배열 변환
+      })
+    })
     
     // 섹션 ID를 섹션 키로 변환
     const sectionKey = getSectionKeyFromId(sectionId)
@@ -165,33 +190,12 @@ export function DocumentViewer() {
     
     try {
       const description = prompt('새 버전에 대한 설명을 입력하세요:')
-      
-      // 수정된 섹션들의 데이터만 추출
-      const modifiedSectionsData: Record<string, string> = {}
-      modifiedSections.forEach(sectionId => {
-        const sectionKey = getSectionKeyFromId(sectionId)
-        if (versionSectionsData[sectionKey]) {
-          modifiedSectionsData[sectionKey] = versionSectionsData[sectionKey]
-        }
-      })
-      const state = await getProjectState()
-      const sectionsData = await getVersionSections(state.currentVersion)
-
-      // 바뀐 부분을 원본에 넣어서 새로운 데이터 생성 (최종 데이터)
-      console.log("modifiedSections입니다.", modifiedSections)
-      console.log("modifiedSectionsData입니다.", modifiedSectionsData)
-      
-      console.log("원본데이터입니다.", sectionsData)
-
-      console.log("Type입니다", currentSection?.type)
-      console.log("Name입니다", currentSection?.sectionName)
-
-      
-      const result = await createNewVersion(description || undefined, modifiedSectionsData)
+      const result = await createNewVersion(description || undefined)
       
       if (result.success) {
         // 상태 업데이트
-        setCurrentVersion(result.version!)
+        localStorage.removeItem('selectedSection')
+        setCurrentVersion(result.version)
         setModifiedSections(new Set())
         
         // 버전 목록 새로고침
@@ -199,6 +203,7 @@ export function DocumentViewer() {
         setVersions(versionList)
         
         alert(result.message)
+        window.location.reload()
       } else {
         alert(result.message)
       }
@@ -207,6 +212,30 @@ export function DocumentViewer() {
       alert('새 버전 생성 중 오류가 발생했습니다.')
     } finally {
       setIsCreatingVersion(false)
+    }
+  }
+
+
+  const handleDeleteEditingVersion = async () => {
+    if (!window.confirm("편집중인 버전을 삭제하시겠습니까?")) return
+
+    try {
+      const res = await fetch("http://localhost:8000/versions/editing-version", {
+        method: "DELETE",
+      })
+      const data = await res.json()
+
+      if (res.ok) {
+        alert(data.message)
+        // 여기서 상태 초기화나 새로고침
+        localStorage.removeItem("selectedSection")
+        window.location.reload()
+      } else {
+        alert(data.message)
+      }
+    } catch (err) {
+      console.error(err)
+      alert("삭제 중 오류가 발생했습니다.")
     }
   }
 
@@ -305,7 +334,14 @@ export function DocumentViewer() {
         <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-bold">Keommang</h1>
+              {/* 홈 버튼 */}
+              <button
+                onClick={handleGoHome}
+                className="flex items-center space-x-2 hover:opacity-80 transition"
+              >
+                <Home className="w-5 h-5" />
+                <span className="text-lg font-semibold">홈</span>
+              </button>
               <div className="h-5 w-px bg-blue-400"></div>
               <div className="flex items-center space-x-3">
                 <span className="bg-orange-500 px-2 py-1 rounded text-xs font-medium">코스닥</span>
@@ -323,16 +359,27 @@ export function DocumentViewer() {
             <div className="flex items-center space-x-3">
               {/* 최종 저장 버튼 */}
               {modifiedSections.size > 0 && (
-                <Button
-                  onClick={handleCreateNewVersion}
-                  disabled={isCreatingVersion}
+                <>
+                  <Button
+                  onClick={handleDeleteEditingVersion}
                   size="sm"
                   variant="outline"
-                  className="bg-green-600 text-white hover:bg-green-700 border-green-600"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  {isCreatingVersion ? '생성 중...' : '최종 저장'}
-                </Button>
+                  className="bg-red-600 text-white hover:bg-red-700 border-red-600"
+                  >
+                    편집 삭제
+                  </Button>
+                  <Button
+                    onClick={handleCreateNewVersion}
+                    disabled={isCreatingVersion}
+                    size="sm"
+                    variant="outline"
+                    className="bg-green-600 text-white hover:bg-green-700 border-green-600"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    {isCreatingVersion ? '생성 중...' : '최종 저장'}
+                  </Button>
+                </>
+                
               )}
             </div>
           </div>
@@ -424,6 +471,7 @@ export function DocumentViewer() {
               sectionName={currentSection?.sectionName}
               sectionType={currentSection?.type}
               onSectionModified={handleSectionModified}
+              modifiedSections={modifiedSections}
             />
           )}
         </div>

@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Button } from './ui/button'
-import { Edit3, Save, X, AlertCircle, CheckCircle } from 'lucide-react'
+import { Edit3, X, AlertCircle, CheckCircle } from 'lucide-react'
+import { saveDocumentContent, updateDocumentSection } from '../../lib/dart-viewer/document-actions'
+import { getSectionKeyFromId } from '../../data/dart-viewer/mockDocumentData'
 
 interface DocumentContentProps {
   htmlContent: string
@@ -10,6 +12,7 @@ interface DocumentContentProps {
   sectionName?: string
   sectionType?: 'part' | 'section-1' | 'section-2'
   onSectionModified?: (sectionId: string, updatedHTML: string) => void
+  modifiedSections?: Set<string>
 }
 
 export function DocumentContent({ 
@@ -17,7 +20,8 @@ export function DocumentContent({
   sectionId, 
   sectionName, 
   sectionType,
-  onSectionModified 
+  onSectionModified,
+  modifiedSections 
 }: DocumentContentProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [hasError, setHasError] = useState(false)
@@ -185,6 +189,18 @@ export function DocumentContent({
       
       // 정리된 HTML 내용 가져오기
       const editedHtml = iframeDoc.documentElement.outerHTML
+
+      let result
+
+      const sectionKey = getSectionKeyFromId(sectionId)
+
+      if (sectionName && sectionType && sectionType !== 'part') {
+        // 하위 섹션 업데이트: 상위 HTML 파일의 해당 섹션만 업데이트
+        result = await updateDocumentSection(htmlContent, sectionName, sectionType, editedHtml, sectionId, sectionKey)
+      } else {
+        // 전체 페이지 저장
+        result = await saveDocumentContent(sectionKey, editedHtml)
+      }
       
       // DB 기반에서는 즉시 저장하지 않고 부모 컴포넌트에 알림
       // 실제 DB 저장은 "최종 저장" 버튼에서 일괄 처리
@@ -203,6 +219,8 @@ export function DocumentContent({
       setTimeout(() => {
         setSaveMessage('')
       }, 5000)
+
+      window.location.reload()
       
     } catch (error) {
       console.error('편집 완료 오류:', error)

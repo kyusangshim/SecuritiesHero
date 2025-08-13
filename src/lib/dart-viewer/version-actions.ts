@@ -25,7 +25,8 @@ export interface DBVersionData {
     section6: string;
     description: string;
     createdAt: string;
-  }
+    modifiedSections: string[]; // 배열 또는 null
+  };
 }
 
 // DB에서 모든 버전 데이터 가져오기
@@ -60,7 +61,7 @@ export async function getSectionHTML(version: string, sectionKey: string): Promi
       throw new Error(`버전 ${version}을 찾을 수 없습니다.`)
     }
     
-    const htmlContent = versionsData[version][sectionKey as keyof typeof versionsData[typeof version]]
+    const htmlContent = versionsData[version][sectionKey as keyof DBVersionData[string]] as string
     
     if (!htmlContent) {
       console.warn(`섹션 ${sectionKey}의 HTML 내용이 비어있습니다.`)
@@ -78,29 +79,31 @@ export async function getSectionHTML(version: string, sectionKey: string): Promi
 export async function initializeProject() {
   try {
     const versionsData = await fetchVersionsFromDB()
-    
-    // v0가 존재하는지 확인
+
+    // 1️⃣ editing이 있으면 초기화 불필요
+    if (versionsData.editing) {
+      return { success: true, message: '편집 중인 버전이 이미 존재합니다.', version: 'editing' }
+    }
+
+    // 2️⃣ v0가 존재하는지 확인
     if (versionsData.v0) {
       return { success: true, message: '프로젝트가 이미 초기화되어 있습니다.', version: 'v0' }
     }
-    
-    const initialData = initializeData();
 
-    
-    const response = await fetch('http://localhost:8000/versions', {
+    const initialData = await initializeData()
+
+    const response = await fetch('http://localhost:8000/versions/init-version', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user_id: 1,
-        version: "v0",
-        description: "초기 버전",
-        sectionsData: initialData || {}, // 수정된 섹션들의 HTML 데이터
+        version: 'v0',
+        description: '초기 버전',
+        sectionsData: initialData || {},
         createdAt: new Date().toISOString()
       })
     })
-    
+
     return { success: true, message: 'v0 초기 템플릿이 생성되었습니다.', version: 'v0' }
   } catch (error) {
     console.error('프로젝트 초기화 오류:', error)
@@ -108,35 +111,48 @@ export async function initializeProject() {
   }
 }
 
+
 // 현재 프로젝트 상태 가져오기 (DB 기반)
 export async function getProjectState(): Promise<ProjectState> {
   try {
     const versionsData = await fetchVersionsFromDB()
-    const versionKeys = Object.keys(versionsData).sort((a, b) => {
-      const aNum = parseInt(a.replace('v', ''))
-      const bNum = parseInt(b.replace('v', ''))
-      return aNum - bNum
-    })
-    
-    // 버전 정보 생성
+    const versionKeys = Object.keys(versionsData)
+
+    let currentVersion = 'v0'
+
+    // 1️⃣ editing이 있으면 최우선 선택
+    if (versionKeys.includes('editing')) {
+      currentVersion = 'editing'
+    } else if (versionKeys.length > 0) {
+      // 2️⃣ 그 외에는 숫자 버전 중 최신 선택
+      const numericVersions = versionKeys.filter(v => v.startsWith('v'))
+      numericVersions.sort((a, b) => {
+        const aNum = parseInt(a.replace('v', ''))
+        const bNum = parseInt(b.replace('v', ''))
+        return aNum - bNum
+      })
+      currentVersion = numericVersions[numericVersions.length - 1]
+    }
+
+    // 3️⃣ 버전 정보 생성
     const versions: VersionInfo[] = versionKeys.map(version => ({
       version,
-      createdAt: versionsData[version].createdAt, // DB에 createdAt이 없다면 임시값 ( new Date().toISOString() )
+      createdAt: versionsData[version].createdAt,
       description: versionsData[version].description || `버전 ${version}`,
-      modifiedSections: [] // 현재 수정 상태는 클라이언트에서 관리
+      modifiedSections: versionsData[version].modifiedSections || []
     }))
-    
-    // 가장 최신 버전을 현재 버전으로 설정
-    const currentVersion = versionKeys[versionKeys.length - 1] || 'v0'
-    
+
     return {
       currentVersion,
       versions,
-      modifiedSections: new Set() // 초기에는 수정된 섹션 없음
+      modifiedSections: new Set(
+        currentVersion === 'editing'
+          ? versionsData['editing']?.modifiedSections || []
+          : []
+      )
     }
   } catch (error) {
     console.error('프로젝트 상태 로드 오류:', error)
-    // 기본 상태 반환
     return {
       currentVersion: 'v0',
       versions: [],
@@ -153,20 +169,8 @@ export async function markSectionAsModified(sectionId: string) {
 }
 
 // 새 버전 생성 (DB에 저장)
-export async function createNewVersion(description?: string, sectionsData?: Record<string, string>) {
+export async function createNewVersion(description?: string) {
   try {
-    const versionsData = await fetchVersionsFromDB()
-    const versionKeys = Object.keys(versionsData)
-    
-    // 새 버전 번호 계산
-    const versionNumbers = versionKeys
-      .map(v => parseInt(v.replace('v', '')))
-      .filter(n => !isNaN(n))
-    
-    const maxVersion = Math.max(...versionNumbers, -1)
-    const newVersionNum = maxVersion + 1
-    const newVersion = `v${newVersionNum}`
-    
     // DB에 새 버전 저장 API 호출
     const response = await fetch('http://localhost:8000/versions', {
       method: 'POST',
@@ -175,9 +179,7 @@ export async function createNewVersion(description?: string, sectionsData?: Reco
       },
       body: JSON.stringify({
         user_id: 1,
-        version: newVersion,
-        description: description || `버전 ${newVersion}`,
-        sectionsData: sectionsData || {}, // 수정된 섹션들의 HTML 데이터
+        description: description || `설명 없음`,
         createdAt: new Date().toISOString()
       })
     })
@@ -190,8 +192,8 @@ export async function createNewVersion(description?: string, sectionsData?: Reco
     
     return { 
       success: true, 
-      message: `${newVersion} 버전이 생성되었습니다.`,
-      version: newVersion 
+      message: result.message,
+      version: result.new_version 
     }
   } catch (error) {
     console.error('새 버전 생성 오류:', error)
