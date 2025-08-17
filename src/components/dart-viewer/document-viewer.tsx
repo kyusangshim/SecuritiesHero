@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Loader2, Plus, Home  } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Plus, Home } from 'lucide-react'
 import { Button } from './ui/button'
 import { TableOfContents } from './table-of-contents'
 import { DocumentContent } from './document-content'
@@ -26,10 +26,6 @@ export function DocumentViewer() {
   })
 
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false)
-  const [leftPanelWidth, setLeftPanelWidth] = useState(20)
-  const [isDragging, setIsDragging] = useState(false)
-  const [startX, setStartX] = useState(0)
-  const [startWidth, setStartWidth] = useState(25)
   const [currentVersion, setCurrentVersion] = useState('v0')
   const [versions, setVersions] = useState<VersionInfo[]>([])
   const [modifiedSections, setModifiedSections] = useState<Set<string>>(new Set())
@@ -37,7 +33,6 @@ export function DocumentViewer() {
   const [currentSectionHTML, setCurrentSectionHTML] = useState<string>('')
   const [isLoadingSection, setIsLoadingSection] = useState(false)
   const [versionSectionsData, setVersionSectionsData] = useState<Record<string, string>>({})
-  const containerRef = useRef<HTMLDivElement>(null)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['3', '6', '7', '14', '21', '22', '28', '36', '47', '50', '55', '60', '66'])
   )
@@ -52,7 +47,6 @@ export function DocumentViewer() {
   useEffect(() => {
     const loadProjectState = async () => {
       try {
-        // 프로젝트 초기화 확인
         await initializeProject()
         
         const state = await getProjectState()
@@ -62,7 +56,6 @@ export function DocumentViewer() {
         const versionList = await getVersionList()
         setVersions(versionList)
         
-        // 현재 버전의 모든 섹션 데이터 로드
         const sectionsData = await getVersionSections(state.currentVersion)
         setVersionSectionsData(sectionsData)
       } catch (error) {
@@ -73,30 +66,20 @@ export function DocumentViewer() {
     loadProjectState()
   }, [])
 
-  // 선택된 섹션이 변경될 때 해당 섹션의 HTML 로드
+  // 선택된 섹션 변경될 때 HTML 로드
   useEffect(() => {
     const loadSectionHTML = async () => {
       if (!selectedSection || !currentVersion) return
       
       setIsLoadingSection(true)
-      
       try {
-        // 섹션 ID를 섹션 키로 변환
         const sectionKey = getSectionKeyFromId(selectedSection)
-        
-        // 먼저 메모리에 캐시된 데이터 확인
         if (versionSectionsData[sectionKey]) {
           setCurrentSectionHTML(versionSectionsData[sectionKey])
         } else {
-          // 캐시에 없으면 DB에서 가져오기
           const html = await getSectionHTML(currentVersion, sectionKey)
           setCurrentSectionHTML(html)
-          
-          // 캐시 업데이트
-          setVersionSectionsData(prev => ({
-            ...prev,
-            [sectionKey]: html
-          }))
+          setVersionSectionsData(prev => ({ ...prev, [sectionKey]: html }))
         }
       } catch (error) {
         console.error('섹션 HTML 로드 오류:', error)
@@ -109,16 +92,14 @@ export function DocumentViewer() {
     loadSectionHTML()
   }, [selectedSection, currentVersion, versionSectionsData])
 
-  // 버전이 변경될 때 새로운 버전의 섹션 데이터 로드
+  // 버전 변경될 때 섹션 데이터 로드
   useEffect(() => {
     const loadVersionData = async () => {
       if (!currentVersion) return
-      
       try {
         const sectionsData = await getVersionSections(currentVersion)
         setVersionSectionsData(sectionsData)
         
-        // 현재 선택된 섹션의 HTML도 업데이트
         const selectedSectionKey = getSectionKeyFromId(selectedSection)
         if (selectedSectionKey && sectionsData[selectedSectionKey]) {
           setCurrentSectionHTML(sectionsData[selectedSectionKey])
@@ -148,7 +129,6 @@ export function DocumentViewer() {
     navigate('/main')
   }
 
-
   const toggleLeftPanel = () => {
     setIsLeftPanelCollapsed(!isLeftPanelCollapsed)
   }
@@ -160,21 +140,12 @@ export function DocumentViewer() {
     await fetch('http://localhost:8000/versions/modified-update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        modifiedSections: Array.from(newModifiedSections) // Set → 배열 변환
-      })
+      body: JSON.stringify({ modifiedSections: Array.from(newModifiedSections) })
     })
     
-    // 섹션 ID를 섹션 키로 변환
     const sectionKey = getSectionKeyFromId(sectionId)
+    setVersionSectionsData(prev => ({ ...prev, [sectionKey]: updatedHTML }))
     
-    // 메모리 캐시 업데이트
-    setVersionSectionsData(prev => ({
-      ...prev,
-      [sectionKey]: updatedHTML
-    }))
-    
-    // 현재 보고 있는 섹션이라면 HTML도 업데이트
     if (sectionId === selectedSection) {
       setCurrentSectionHTML(updatedHTML)
     }
@@ -185,23 +156,16 @@ export function DocumentViewer() {
       alert('수정된 섹션이 없습니다.')
       return
     }
-    
     setIsCreatingVersion(true)
-    
     try {
       const description = prompt('새 버전에 대한 설명을 입력하세요:')
       const result = await createNewVersion(description || undefined)
-      
       if (result.success) {
-        // 상태 업데이트
         localStorage.removeItem('selectedSection')
         setCurrentVersion(result.version)
         setModifiedSections(new Set())
-        
-        // 버전 목록 새로고침
         const versionList = await getVersionList()
         setVersions(versionList)
-        
         alert(result.message)
         window.location.reload()
       } else {
@@ -215,19 +179,13 @@ export function DocumentViewer() {
     }
   }
 
-
   const handleDeleteEditingVersion = async () => {
     if (!window.confirm("편집중인 버전을 삭제하시겠습니까?")) return
-
     try {
-      const res = await fetch("http://localhost:8000/versions/editing-version", {
-        method: "DELETE",
-      })
+      const res = await fetch("http://localhost:8000/versions/editing-version", { method: "DELETE" })
       const data = await res.json()
-
       if (res.ok) {
         alert(data.message)
-        // 여기서 상태 초기화나 새로고침
         localStorage.removeItem("selectedSection")
         window.location.reload()
       } else {
@@ -241,29 +199,21 @@ export function DocumentViewer() {
 
   const handleSwitchVersion = async (version: string) => {
     if (version === currentVersion) return
-    
     if (modifiedSections.size > 0) {
       const confirm = window.confirm('저장되지 않은 변경사항이 있습니다. 계속하시겠습니까?')
       if (!confirm) return
     }
-    
     try {
       const result = await switchToVersion(version)
-      
       if (result.success) {
         setCurrentVersion(version)
         setModifiedSections(new Set())
-        
-        // 새 버전의 섹션 데이터 로드
         const sectionsData = await getVersionSections(version)
         setVersionSectionsData(sectionsData)
-        
-        // 현재 선택된 섹션의 HTML 업데이트
         const selectedSectionKey = getSectionKeyFromId(selectedSection)
         if (selectedSectionKey && sectionsData[selectedSectionKey]) {
           setCurrentSectionHTML(sectionsData[selectedSectionKey])
         }
-        
         alert(result.message)
       } else {
         alert(result.message)
@@ -274,71 +224,14 @@ export function DocumentViewer() {
     }
   }
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-    setStartX(e.clientX)
-    setStartWidth(leftPanelWidth)
-    
-    // 드래그 중 텍스트 선택 방지
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'col-resize'
-  }, [leftPanelWidth])
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !containerRef.current) return
-    
-    const containerRect = containerRef.current.getBoundingClientRect()
-    const deltaX = e.clientX - startX
-    const containerWidth = containerRect.width
-    const deltaPercent = (deltaX / containerWidth) * 100
-    const newWidth = Math.max(15, Math.min(50, startWidth + deltaPercent))
-    
-    setLeftPanelWidth(newWidth)
-  }, [isDragging, startX, startWidth])
-
-  const handleMouseUp = useCallback(() => {
-    if (isDragging) {
-      setIsDragging(false)
-      
-      // 드래그 종료 후 스타일 복원
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-    }
-  }, [isDragging])
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
-      }
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp])
-
-  // 컴포넌트 언마운트 시 정리
-  useEffect(() => {
-    return () => {
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-    }
-  }, [])
-
   return (
-    <div ref={containerRef} className="h-screen flex flex-col bg-white">
+    <div className="h-screen flex flex-col bg-white">
       {/* Header */}
       <div className="bg-blue-600 text-white shadow-sm">
         <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              {/* 홈 버튼 */}
-              <button
-                onClick={handleGoHome}
-                className="flex items-center space-x-2 hover:opacity-80 transition"
-              >
+              <button onClick={handleGoHome} className="flex items-center space-x-2 hover:opacity-80 transition">
                 <Home className="w-5 h-5" />
                 <span className="text-lg font-semibold">홈</span>
               </button>
@@ -346,8 +239,6 @@ export function DocumentViewer() {
               <div className="flex items-center space-x-3">
                 <span className="bg-orange-500 px-2 py-1 rounded text-xs font-medium">코스닥</span>
                 <span className="font-medium">오픈엣지테크놀로지</span>
-                
-                {/* 버전 선택 드롭다운 */}
                 <VersionSelector
                   currentVersion={currentVersion}
                   versions={versions}
@@ -357,14 +248,13 @@ export function DocumentViewer() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              {/* 최종 저장 버튼 */}
               {modifiedSections.size > 0 && (
                 <>
                   <Button
-                  onClick={handleDeleteEditingVersion}
-                  size="sm"
-                  variant="outline"
-                  className="bg-red-600 text-white hover:bg-red-700 border-red-600"
+                    onClick={handleDeleteEditingVersion}
+                    size="sm"
+                    variant="outline"
+                    className="bg-red-600 text-white hover:bg-red-700 border-red-600"
                   >
                     편집 삭제
                   </Button>
@@ -379,7 +269,6 @@ export function DocumentViewer() {
                     {isCreatingVersion ? '생성 중...' : '최종 저장'}
                   </Button>
                 </>
-                
               )}
             </div>
           </div>
@@ -398,20 +287,17 @@ export function DocumentViewer() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Panel - Table of Contents */}
-        <div 
-          className={`bg-gray-50 border-r transition-all duration-200 ease-in-out ${
-            isLeftPanelCollapsed ? 'w-0' : ''
+        {/* Left Panel */}
+        <div
+          className={`bg-white border-r transition-all duration-200 ease-in-out ${
+            isLeftPanelCollapsed ? 'w-0' : 'w-1/5'
           }`}
-          style={{ 
-            width: isLeftPanelCollapsed ? '0%' : `${leftPanelWidth}%`,
-            minWidth: isLeftPanelCollapsed ? '0px' : '200px'
-          }}
+          style={{ minWidth: isLeftPanelCollapsed ? '0px' : '200px' }}
         >
           {!isLeftPanelCollapsed && (
             <div className="h-full flex flex-col">
-              <div className="bg-blue-100 dark:bg-blue-900 p-3 border-b border-blue-300 dark:border-blue-700 text-center">
-                <h3 className="font-semibold text-blue-800 dark:text-blue-100">📑 문서 목차</h3>
+              <div className="bg-blue-100 p-3 border-b text-center">
+                <h3 className="font-semibold text-blue-800">📑 문서 목차</h3>
               </div>
               <div className="flex-1 overflow-auto">
                 <TableOfContents
@@ -427,37 +313,21 @@ export function DocumentViewer() {
           )}
         </div>
 
-        {/* Divider */}
-        {!isLeftPanelCollapsed && (
-          <div
-            className={`w-1 bg-gray-300 hover:bg-blue-400 transition-colors cursor-col-resize select-none ${
-              isDragging ? 'bg-blue-500' : ''
-            }`}
-            onMouseDown={handleMouseDown}
-          >
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="w-0.5 h-8 bg-gray-400 rounded-full opacity-60"></div>
-            </div>
-          </div>
-        )}
-
         {/* Toggle Button */}
         <Button
           variant="outline"
           size="sm"
-          className={`absolute top-1/2 z-10 transform -translate-y-1/2 transition-all duration-200 ${
-            isLeftPanelCollapsed ? 'left-2' : ''
-          }`}
-          style={{ 
-            left: isLeftPanelCollapsed ? '8px' : `calc(${leftPanelWidth}% + 4px)`,
-            transition: 'left 0.2s ease-in-out'
+          className={`absolute z-10 transform -translate-y-1/2 transition-all duration-200`}
+          style={{
+            left: isLeftPanelCollapsed ? '8px' : 'calc(20% + 4px)',
+            top: '25px', // 목차 패널 상단에 가까이 배치
           }}
           onClick={toggleLeftPanel}
         >
           {isLeftPanelCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </Button>
 
-        {/* Right Panel - Document Content */}
+        {/* Right Panel */}
         <div className="flex-1 bg-white overflow-hidden">
           {isLoadingSection ? (
             <div className="flex items-center justify-center h-full">

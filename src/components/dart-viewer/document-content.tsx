@@ -259,6 +259,40 @@ export function DocumentContent({
     setSaveMessage('')
   }
 
+  const handleImageInsert = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+
+      const reader = new FileReader()
+      reader.onload = () => {
+        const imgSrc = reader.result as string
+
+        // iframe 안의 커서 위치에 이미지 삽입
+        const iframeDoc = iframeRef.current?.contentDocument
+        if (!iframeDoc) return
+
+        const selection = iframeDoc.getSelection()
+        if (!selection || !selection.rangeCount) return
+
+        const img = iframeDoc.createElement('img')
+        img.src = imgSrc
+        img.style.maxWidth = '100%'
+        img.style.height = 'auto'
+
+        const range = selection.getRangeAt(0)
+        range.insertNode(img)
+      }
+      reader.readAsDataURL(file)
+    }
+
+    input.click()
+  }
+
   // HTML 컨텐츠가 비어있는 경우 처리
   if (!htmlContent) {
     return (
@@ -275,18 +309,17 @@ export function DocumentContent({
     <div className="h-full relative">
       {/* 편집 도구바 */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-        {!isEditing ? (
-          <Button
-            onClick={handleEdit}
-            size="sm"
-            variant="outline"
-            className="bg-white shadow-md hover:bg-gray-50"
-          >
-            <Edit3 className="w-4 h-4 mr-1" />
-            편집 시작
-          </Button>
-        ) : (
+        {isEditing ? (
           <div className="flex items-center gap-2">
+            {/* 이미지 추가 버튼 */}
+            <Button
+              onClick={handleImageInsert}
+              size="sm"
+              variant="outline"
+              className="bg-white shadow-md hover:bg-gray-50"
+            >
+              이미지 추가
+            </Button>
             <Button
               onClick={handleSave}
               size="sm"
@@ -296,6 +329,7 @@ export function DocumentContent({
               <CheckCircle className="w-4 h-4 mr-1" />
               {isSaving ? '편집 완료 중...' : '편집 완료'}
             </Button>
+
             <Button
               onClick={handleCancel}
               size="sm"
@@ -306,6 +340,16 @@ export function DocumentContent({
               취소
             </Button>
           </div>
+        ) : (
+          <Button
+            onClick={handleEdit}
+            size="sm"
+            variant="outline"
+            className="bg-white shadow-md hover:bg-gray-50"
+          >
+            <Edit3 className="w-4 h-4 mr-1" />
+            편집 시작
+          </Button>
         )}
       </div>
 

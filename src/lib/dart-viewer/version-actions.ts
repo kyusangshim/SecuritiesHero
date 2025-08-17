@@ -32,6 +32,7 @@ export interface DBVersionData {
 // DB에서 모든 버전 데이터 가져오기
 export async function fetchVersionsFromDB(): Promise<DBVersionData> {
   try {
+    console.log("DB에 접근을 하였습니다.")
     const response = await fetch('http://localhost:8000/versions', {
       method: 'GET',
       headers: {
@@ -55,6 +56,7 @@ export async function fetchVersionsFromDB(): Promise<DBVersionData> {
 // 특정 버전의 특정 섹션 HTML 가져오기
 export async function getSectionHTML(version: string, sectionKey: string): Promise<string> {
   try {
+    console.log("getSectionHTML에서 불렸습니다.")
     const versionsData = await fetchVersionsFromDB()
     
     if (!versionsData[version]) {
@@ -78,6 +80,7 @@ export async function getSectionHTML(version: string, sectionKey: string): Promi
 // 프로젝트 초기화 (DB 기반)
 export async function initializeProject() {
   try {
+    console.log("initializeProject에서 불렸습니다.")
     const versionsData = await fetchVersionsFromDB()
 
     // 1️⃣ editing이 있으면 초기화 불필요
@@ -115,6 +118,7 @@ export async function initializeProject() {
 // 현재 프로젝트 상태 가져오기 (DB 기반)
 export async function getProjectState(): Promise<ProjectState> {
   try {
+    console.log("getProjectState에서 불렸습니다.")
     const versionsData = await fetchVersionsFromDB()
     const versionKeys = Object.keys(versionsData)
 
@@ -204,6 +208,7 @@ export async function createNewVersion(description?: string) {
 // 특정 버전으로 전환 (DB에서 해당 버전 데이터 로드)
 export async function switchToVersion(targetVersion: string) {
   try {
+    console.log("switchToVersion에서 불렸습니다.")
     const versionsData = await fetchVersionsFromDB()
     
     if (!versionsData[targetVersion]) {
@@ -236,6 +241,7 @@ export async function getVersionList(): Promise<VersionInfo[]> {
 // 특정 버전의 모든 섹션 데이터 가져오기
 export async function getVersionSections(version: string): Promise<Record<string, string>> {
   try {
+    console.log("getVersionSections에서 불렸습니다.")
     const versionsData = await fetchVersionsFromDB()
     
     if (!versionsData[version]) {
