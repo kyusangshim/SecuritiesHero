@@ -6,7 +6,7 @@ import parserHtml from "prettier/plugins/html"
 
 export async function saveDocumentContent(sectionKey: string, content: string) {
   try {
-    const response = await fetch('http://localhost:8000/versions/edit-version', {
+    const response = await fetch('http://localhost:8000/versions/editing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -20,8 +20,7 @@ export async function saveDocumentContent(sectionKey: string, content: string) {
     })
 
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-    const result = await response.json()
-    return { success: true, message: result.message }
+    return { success: true, message: "편집 버전이 저장되었습니다." }
   } catch (error) {
     console.error('Error saving document content to DB:', error)
     return { success: false, message: 'DB 저장 중 오류가 발생했습니다.' }
@@ -66,7 +65,7 @@ export async function updateDocumentSection(
     })
 
     // DB 저장
-    const response = await fetch('http://localhost:8000/versions/edit-version', {
+    const response = await fetch('http://localhost:8000/versions/editing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -80,13 +79,12 @@ export async function updateDocumentSection(
     })
 
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-    const result = await response.json()
 
     if (sectionId) {
       await markSectionAsModified(sectionId)
     }
 
-    return { success: true, message: result.message }
+    return { success: true, message: "편집 버전이 저장되었습니다." }
   } catch (error) {
     console.error('Error updating document section:', error)
     return { success: false, message: '섹션 업데이트 중 오류가 발생했습니다.' }

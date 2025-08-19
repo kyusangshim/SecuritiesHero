@@ -33,13 +33,14 @@ export interface DBVersionData {
 export async function fetchVersionsFromDB(): Promise<DBVersionData> {
   try {
     console.log("DB에 접근을 하였습니다.")
-    const response = await fetch('http://localhost:8000/versions', {
+    const u_id = 1;
+    const response = await fetch(`http://localhost:8000/versions/${u_id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
       cache: 'no-store' // 항상 최신 데이터 가져오기
-    })
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
@@ -95,7 +96,7 @@ export async function initializeProject() {
 
     const initialData = await initializeData()
 
-    const response = await fetch('http://localhost:8000/versions/init-version', {
+    const response = await fetch('http://localhost:8000/versions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -176,7 +177,7 @@ export async function markSectionAsModified(sectionId: string) {
 export async function createNewVersion(description?: string) {
   try {
     // DB에 새 버전 저장 API 호출
-    const response = await fetch('http://localhost:8000/versions', {
+    const response = await fetch('http://localhost:8000/versions/finalize', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

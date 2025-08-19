@@ -137,10 +137,13 @@ export function DocumentViewer() {
     const newModifiedSections = new Set([...modifiedSections, sectionId])
     setModifiedSections(newModifiedSections)
 
-    await fetch('http://localhost:8000/versions/modified-update', {
-      method: 'POST',
+    await fetch('http://localhost:8000/versions/editing', {
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modifiedSections: Array.from(newModifiedSections) })
+      body: JSON.stringify({ 
+        user_id: 1,
+        modifiedSections: Array.from(newModifiedSections) 
+      })
     })
     
     const sectionKey = getSectionKeyFromId(sectionId)
@@ -182,7 +185,13 @@ export function DocumentViewer() {
   const handleDeleteEditingVersion = async () => {
     if (!window.confirm("편집중인 버전을 삭제하시겠습니까?")) return
     try {
-      const res = await fetch("http://localhost:8000/versions/editing-version", { method: "DELETE" })
+      const res = await fetch("http://localhost:8000/versions/editing", { 
+        method: "DELETE",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: 1,
+        })
+      })
       const data = await res.json()
       if (res.ok) {
         alert(data.message)
