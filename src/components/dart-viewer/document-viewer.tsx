@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Loader2, Plus, Home } from 'lucide-react'
 import { Button } from './ui/button'
@@ -6,16 +6,13 @@ import { TableOfContents } from './table-of-contents'
 import { DocumentContent } from './document-content'
 import { VersionSelector } from './version-selector'
 import { 
-  getProjectState, 
   createNewVersion, 
-  switchToVersion, 
-  getVersionList, 
-  initializeProject, 
-  getSectionHTML,
   getVersionSections,
+  loadFullProjectState,
   type VersionInfo 
 } from '../../lib/dart-viewer/version-actions'
-import { mockDocumentData, DocumentSection, getSectionKeyFromId } from '../../data/dart-viewer/mockDocumentData'
+import { mockDocumentData, getSectionKeyFromId, findSectionById } from '../../data/dart-viewer/mockDocumentData'
+
 
 export function DocumentViewer() {
   const navigate = useNavigate()
@@ -41,23 +38,17 @@ export function DocumentViewer() {
     if (selectedSection) {
       localStorage.setItem('selectedSection', selectedSection)
     }
-  }, [selectedSection])
+  })
 
   // 프로젝트 상태 로드
   useEffect(() => {
     const loadProjectState = async () => {
       try {
-        await initializeProject()
-        
-        const state = await getProjectState()
+        const state = await loadFullProjectState(123456)
         setCurrentVersion(state.currentVersion)
+        setVersions(state.versions)
         setModifiedSections(state.modifiedSections)
-        
-        const versionList = await getVersionList()
-        setVersions(versionList)
-        
-        const sectionsData = await getVersionSections(state.currentVersion)
-        setVersionSectionsData(sectionsData)
+        setVersionSectionsData(state.sectionsData)
       } catch (error) {
         console.error('프로젝트 상태 로드 오류:', error)
       }
@@ -66,68 +57,19 @@ export function DocumentViewer() {
     loadProjectState()
   }, [])
 
-  // 선택된 섹션 변경될 때 HTML 로드
+  // 섹션 변경 시 → 캐시에서 꺼내쓰기
   useEffect(() => {
-    const loadSectionHTML = async () => {
-      if (!selectedSection || !currentVersion) return
-      
-      setIsLoadingSection(true)
-      try {
-        const sectionKey = getSectionKeyFromId(selectedSection)
-        if (versionSectionsData[sectionKey]) {
-          setCurrentSectionHTML(versionSectionsData[sectionKey])
-        } else {
-          const html = await getSectionHTML(currentVersion, sectionKey)
-          setCurrentSectionHTML(html)
-          setVersionSectionsData(prev => ({ ...prev, [sectionKey]: html }))
-        }
-      } catch (error) {
-        console.error('섹션 HTML 로드 오류:', error)
-        setCurrentSectionHTML('')
-      } finally {
-        setIsLoadingSection(false)
-      }
-    }
-    
-    loadSectionHTML()
-  }, [selectedSection, currentVersion, versionSectionsData])
+    if (!selectedSection || !versionSectionsData) return
 
-  // 버전 변경될 때 섹션 데이터 로드
-  useEffect(() => {
-    const loadVersionData = async () => {
-      if (!currentVersion) return
-      try {
-        const sectionsData = await getVersionSections(currentVersion)
-        setVersionSectionsData(sectionsData)
-        
-        const selectedSectionKey = getSectionKeyFromId(selectedSection)
-        if (selectedSectionKey && sectionsData[selectedSectionKey]) {
-          setCurrentSectionHTML(sectionsData[selectedSectionKey])
-        }
-      } catch (error) {
-        console.error('버전 데이터 로드 오류:', error)
-      }
-    }
-    
-    loadVersionData()
-  }, [currentVersion, selectedSection])
+    const sectionKey = getSectionKeyFromId(selectedSection)
+    setCurrentSectionHTML(versionSectionsData[sectionKey] ?? "")
+  }, [selectedSection, versionSectionsData])
 
-  const findSectionById = (sections: DocumentSection[], id: string): DocumentSection | null => {
-    for (const section of sections) {
-      if (section.id === id) return section
-      if (section.children) {
-        const found = findSectionById(section.children, id)
-        if (found) return found
-      }
-    }
-    return null
-  }
 
-  const currentSection = findSectionById(mockDocumentData, selectedSection)
-
-  const handleGoHome = () => {
-    navigate('/main')
-  }
+  const currentSection = useMemo(
+    () => findSectionById(mockDocumentData, selectedSection),
+    [selectedSection]
+  )
 
   const toggleLeftPanel = () => {
     setIsLeftPanelCollapsed(!isLeftPanelCollapsed)
@@ -137,11 +79,11 @@ export function DocumentViewer() {
     const newModifiedSections = new Set([...modifiedSections, sectionId])
     setModifiedSections(newModifiedSections)
 
-    await fetch('http://localhost:8000/versions/editing', {
+    await fetch('http://localhost:8081/api/versions/editing', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        user_id: 1,
+        user_id: 123456,
         modifiedSections: Array.from(newModifiedSections) 
       })
     })
@@ -162,15 +104,17 @@ export function DocumentViewer() {
     setIsCreatingVersion(true)
     try {
       const description = prompt('새 버전에 대한 설명을 입력하세요:')
-      const result = await createNewVersion(description || undefined)
+      const result = await createNewVersion(123456, description || undefined)
       if (result.success) {
         localStorage.removeItem('selectedSection')
-        setCurrentVersion(result.version)
-        setModifiedSections(new Set())
-        const versionList = await getVersionList()
-        setVersions(versionList)
+
+        const state = await loadFullProjectState(123456)
+        setCurrentVersion(state.currentVersion)
+        setModifiedSections(state.modifiedSections)
+        setVersions(state.versions)
+        setVersionSectionsData(state.sectionsData)
+
         alert(result.message)
-        window.location.reload()
       } else {
         alert(result.message)
       }
@@ -179,26 +123,27 @@ export function DocumentViewer() {
       alert('새 버전 생성 중 오류가 발생했습니다.')
     } finally {
       setIsCreatingVersion(false)
+      window.location.reload();
     }
   }
 
   const handleDeleteEditingVersion = async () => {
     if (!window.confirm("편집중인 버전을 삭제하시겠습니까?")) return
     try {
-      const res = await fetch("http://localhost:8000/versions/editing", { 
+      const res = await fetch("http://localhost:8081/api/versions/editing", { 
         method: "DELETE",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          user_id: 1,
+          user_id: 123456,
         })
       })
-      const data = await res.json()
+      const text = await res.text()
       if (res.ok) {
-        alert(data.message)
+        alert(text)
         localStorage.removeItem("selectedSection")
         window.location.reload()
       } else {
-        alert(data.message)
+        alert(text)
       }
     } catch (err) {
       console.error(err)
@@ -212,24 +157,24 @@ export function DocumentViewer() {
       const confirm = window.confirm('저장되지 않은 변경사항이 있습니다. 계속하시겠습니까?')
       if (!confirm) return
     }
+    setIsLoadingSection(true)
     try {
-      const result = await switchToVersion(version)
-      if (result.success) {
-        setCurrentVersion(version)
-        setModifiedSections(new Set())
-        const sectionsData = await getVersionSections(version)
-        setVersionSectionsData(sectionsData)
-        const selectedSectionKey = getSectionKeyFromId(selectedSection)
-        if (selectedSectionKey && sectionsData[selectedSectionKey]) {
-          setCurrentSectionHTML(sectionsData[selectedSectionKey])
-        }
-        alert(result.message)
-      } else {
-        alert(result.message)
+      setCurrentVersion(version)
+      setModifiedSections(new Set())
+
+      const sectionsData = await getVersionSections(version, 123456)
+      setVersionSectionsData(sectionsData)
+
+      const selectedSectionKey = getSectionKeyFromId(selectedSection)
+      if (selectedSectionKey && sectionsData[selectedSectionKey]) {
+        setCurrentSectionHTML(sectionsData[selectedSectionKey])
       }
+
     } catch (error) {
       console.error('버전 전환 오류:', error)
       alert('버전 전환 중 오류가 발생했습니다.')
+    } finally {
+      setIsLoadingSection(false)
     }
   }
 
@@ -240,7 +185,7 @@ export function DocumentViewer() {
         <div className="px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <button onClick={handleGoHome} className="flex items-center space-x-2 hover:opacity-80 transition">
+              <button onClick={() => navigate('/main')} className="flex items-center space-x-2 hover:opacity-80 transition">
                 <Home className="w-5 h-5" />
                 <span className="text-lg font-semibold">홈</span>
               </button>
@@ -345,6 +290,7 @@ export function DocumentViewer() {
             </div>
           ) : (
             <DocumentContent 
+              userId={123456}
               htmlContent={currentSectionHTML}
               sectionId={selectedSection}
               sectionName={currentSection?.sectionName}

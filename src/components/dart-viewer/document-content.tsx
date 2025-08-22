@@ -7,6 +7,7 @@ import { saveDocumentContent, updateDocumentSection } from '../../lib/dart-viewe
 import { getSectionKeyFromId } from '../../data/dart-viewer/mockDocumentData'
 
 interface DocumentContentProps {
+  userId: number,
   htmlContent: string
   sectionId: string
   sectionName?: string
@@ -16,6 +17,7 @@ interface DocumentContentProps {
 }
 
 export function DocumentContent({ 
+  userId,
   htmlContent, 
   sectionId, 
   sectionName, 
@@ -170,6 +172,9 @@ export function DocumentContent({
     
     setIsSaving(true)
     setSaveMessage('')
+
+    
+    let editedHtml = null;
     
     try {
       const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document
@@ -188,7 +193,7 @@ export function DocumentContent({
       }
       
       // 정리된 HTML 내용 가져오기
-      const editedHtml = iframeDoc.documentElement.outerHTML
+      editedHtml = iframeDoc.documentElement.outerHTML
 
       let result
 
@@ -196,10 +201,10 @@ export function DocumentContent({
 
       if (sectionName && sectionType && sectionType !== 'part') {
         // 하위 섹션 업데이트: 상위 HTML 파일의 해당 섹션만 업데이트
-        result = await updateDocumentSection(htmlContent, sectionName, sectionType, editedHtml, sectionId, sectionKey)
+        result = await updateDocumentSection(userId, htmlContent, sectionName, sectionType, editedHtml, sectionId, sectionKey)
       } else {
         // 전체 페이지 저장
-        result = await saveDocumentContent(sectionKey, editedHtml)
+        result = await saveDocumentContent(userId, sectionKey, editedHtml)
       }
       
       // DB 기반에서는 즉시 저장하지 않고 부모 컴포넌트에 알림
@@ -208,19 +213,12 @@ export function DocumentContent({
       setOriginalHtml(editedHtml)
       setIsEditing(false)
       
-      // 섹션이 수정되었음을 부모 컴포넌트에 알림 (업데이트된 HTML과 함께)
-      if (onSectionModified) {
-        onSectionModified(sectionId, editedHtml)
-      }
-      
       setSaveMessage('편집이 완료되었습니다. "최종 저장"을 눌러 DB에 저장하세요.')
       
       // 성공 메시지 자동 숨김
       setTimeout(() => {
         setSaveMessage('')
       }, 5000)
-
-      window.location.reload()
       
     } catch (error) {
       console.error('편집 완료 오류:', error)
@@ -235,6 +233,12 @@ export function DocumentContent({
         body.style.outlineOffset = '4px'
       }
     } finally {
+      // 섹션이 수정되었음을 부모 컴포넌트에 알림 (업데이트된 HTML과 함께)
+      if (onSectionModified) {
+        if (editedHtml !== null) { // editedHtml이 성공적으로 할당되었을 때만 호출
+          onSectionModified(sectionId, editedHtml);
+        }
+      }
       setIsSaving(false)
     }
   }

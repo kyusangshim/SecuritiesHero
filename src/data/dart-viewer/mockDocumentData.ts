@@ -510,13 +510,3 @@ export function findSectionById(sections: DocumentSection[], id: string): Docume
   }
   return null
 }
-
-// 섹션 키별 기본 HTML 템플릿 (DB에 데이터가 없을 때 사용)
-export const DEFAULT_SECTION_TEMPLATES: Record<string, string> = {
-  section1: `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>증권신고서</title></head><body><h1>증권신고서</h1><p>내용이 없습니다.</p></body></html>`,
-  section2: `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>대표이사 등의 확인</title></head><body><h1>【 대표이사 등의 확인 】</h1><p>내용이 없습니다.</p></body></html>`,
-  section3: `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>요약정보</title></head><body><h1>요약정보</h1><p>내용이 없습니다.</p></body></html>`,
-  section4: `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>제1부 모집 또는 매출에 관한 사항</title></head><body><h1>제1부 모집 또는 매출에 관한 사항</h1><p>내용이 없습니다.</p></body></html>`,
-  section5: `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>제2부 발행인에 관한 사항</title></head><body><h1>제2부 발행인에 관한 사항</h1><p>내용이 없습니다.</p></body></html>`,
-  section6: `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>전문가의 확인</title></head><body><h1>【 전문가의 확인 】</h1><p>내용이 없습니다.</p></body></html>`,
-}

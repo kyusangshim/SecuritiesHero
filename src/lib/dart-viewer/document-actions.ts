@@ -4,17 +4,19 @@ import { markSectionAsModified } from './version-actions'
 import prettier from "prettier/standalone"
 import parserHtml from "prettier/plugins/html"
 
-export async function saveDocumentContent(sectionKey: string, content: string) {
+export async function saveDocumentContent(userId: number, sectionKey: string, content: string) {
   try {
-    const response = await fetch('http://localhost:8000/versions/editing', {
+    const finalHtml = `<!DOCTYPE html>\n${content}`
+
+    const response = await fetch('http://localhost:8081/api/versions/editing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id: 1, 
+        user_id: userId, 
         description: '편집중인 버전',
         createdAt: new Date().toISOString(),
         sectionsData: {
-          [sectionKey]: content
+          [sectionKey]: finalHtml
         }
       })
     })
@@ -29,6 +31,7 @@ export async function saveDocumentContent(sectionKey: string, content: string) {
 
 
 export async function updateDocumentSection(
+  userId: number,
   htmlContent: string,
   sectionName: string,
   sectionType: 'section-1' | 'section-2',
@@ -65,11 +68,11 @@ export async function updateDocumentSection(
     })
 
     // DB 저장
-    const response = await fetch('http://localhost:8000/versions/editing', {
+    const response = await fetch('http://localhost:8081/api/versions/editing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id: 1,
+        user_id: userId,
         description: '편집중인 버전',
         createdAt: new Date().toISOString(),
         sectionsData: {
