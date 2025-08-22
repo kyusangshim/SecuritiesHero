@@ -25,6 +25,7 @@ const MainPage: React.FC = () => {
     handleSecurityClick
   } = useMainPage();
 
+
   return (
     <MainLayout
       user={user}

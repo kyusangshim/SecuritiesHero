@@ -18,6 +18,7 @@ export interface LoginOptions {
 export type OAuthProvider = 'naver' | 'kakao' | 'google';
 
 export interface UserDto {
+  id: number,
   username: string;
   email: string;
   role: string;
