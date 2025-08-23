@@ -5,13 +5,15 @@ import { Button } from './ui/button'
 import { TableOfContents } from './table-of-contents'
 import { DocumentContent } from './document-content'
 import { VersionSelector } from './version-selector'
-import { 
-  createNewVersion, 
+import {
+  createNewVersion,
   getVersionSections,
   loadFullProjectState,
-  type VersionInfo 
+  type VersionInfo
 } from '../../lib/dart-viewer/version-actions'
 import { mockDocumentData, getSectionKeyFromId, findSectionById } from '../../data/dart-viewer/mockDocumentData'
+import React from 'react'
+import axios from '../../api/axios'
 
 
 export function DocumentViewer() {
@@ -40,11 +42,12 @@ export function DocumentViewer() {
     }
   })
 
-  // 프로젝트 상태 로드
   useEffect(() => {
     const loadProjectState = async () => {
       try {
-        const state = await loadFullProjectState(123456)
+        const token = localStorage.getItem("accessToken");
+        const state = await loadFullProjectState(123456, token);
+
         setCurrentVersion(state.currentVersion)
         setVersions(state.versions)
         setModifiedSections(state.modifiedSections)
@@ -57,7 +60,6 @@ export function DocumentViewer() {
     loadProjectState()
   }, [])
 
-  // 섹션 변경 시 → 캐시에서 꺼내쓰기
   useEffect(() => {
     if (!selectedSection || !versionSectionsData) return
 
@@ -79,18 +81,18 @@ export function DocumentViewer() {
     const newModifiedSections = new Set([...modifiedSections, sectionId])
     setModifiedSections(newModifiedSections)
 
-    await fetch('http://localhost:8081/api/versions/editing', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+    try {
+      await axios.patch('/api/versions/editing', {
         user_id: 123456,
-        modifiedSections: Array.from(newModifiedSections) 
+        modifiedSections: Array.from(newModifiedSections)
       })
-    })
-    
+    } catch (error) {
+      console.error("수정된 섹션 상태 업데이트 오류:", error);
+    }
+
     const sectionKey = getSectionKeyFromId(sectionId)
     setVersionSectionsData(prev => ({ ...prev, [sectionKey]: updatedHTML }))
-    
+
     if (sectionId === selectedSection) {
       setCurrentSectionHTML(updatedHTML)
     }
@@ -104,11 +106,13 @@ export function DocumentViewer() {
     setIsCreatingVersion(true)
     try {
       const description = prompt('새 버전에 대한 설명을 입력하세요:')
-      const result = await createNewVersion(123456, description || undefined)
+      const token = localStorage.getItem("accessToken"); 
+      const result = await createNewVersion(123456, description || undefined, token); 
+      
       if (result.success) {
         localStorage.removeItem('selectedSection')
-
-        const state = await loadFullProjectState(123456)
+        
+        const state = await loadFullProjectState(123456, token);
         setCurrentVersion(state.currentVersion)
         setModifiedSections(state.modifiedSections)
         setVersions(state.versions)
@@ -128,26 +132,20 @@ export function DocumentViewer() {
   }
 
   const handleDeleteEditingVersion = async () => {
-    if (!window.confirm("편집중인 버전을 삭제하시겠습니까?")) return
+    if (!window.confirm("편집중인 버전을 삭제하시겠습니까?")) return;
     try {
-      const res = await fetch("http://localhost:8081/api/versions/editing", { 
-        method: "DELETE",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+      const response = await axios.delete("/api/versions/editing", {
+        data: {
           user_id: 123456,
-        })
-      })
-      const text = await res.text()
-      if (res.ok) {
-        alert(text)
-        localStorage.removeItem("selectedSection")
-        window.location.reload()
-      } else {
-        alert(text)
-      }
-    } catch (err) {
-      console.error(err)
-      alert("삭제 중 오류가 발생했습니다.")
+        }
+      });
+      alert(response.data);
+      localStorage.removeItem("selectedSection");
+      window.location.reload();
+    } catch (err: any) {
+      console.error(err);
+      const errorMessage = err.response?.data || "삭제 중 오류가 발생했습니다.";
+      alert(errorMessage);
     }
   }
 
@@ -162,7 +160,8 @@ export function DocumentViewer() {
       setCurrentVersion(version)
       setModifiedSections(new Set())
 
-      const sectionsData = await getVersionSections(version, 123456)
+      const token = localStorage.getItem("accessToken"); 
+      const sectionsData = await getVersionSections(version, 123456, token);
       setVersionSectionsData(sectionsData)
 
       const selectedSectionKey = getSectionKeyFromId(selectedSection)
@@ -274,7 +273,7 @@ export function DocumentViewer() {
           className={`absolute z-10 transform -translate-y-1/2 transition-all duration-200`}
           style={{
             left: isLeftPanelCollapsed ? '8px' : 'calc(20% + 4px)',
-            top: '25px', // 목차 패널 상단에 가까이 배치
+            top: '25px', 
           }}
           onClick={toggleLeftPanel}
         >
@@ -289,7 +288,7 @@ export function DocumentViewer() {
               <span className="ml-2 text-gray-600">섹션을 불러오는 중...</span>
             </div>
           ) : (
-            <DocumentContent 
+            <DocumentContent
               userId={123456}
               htmlContent={currentSectionHTML}
               sectionId={selectedSection}
