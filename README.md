@@ -1,20 +1,4 @@
-# 디렉토리 구조
-```
-├── report/                       # 공시 원본(XML) 루트
-│   ├── 1분기/                    # 1분기 보고서 XML (e.g. 1분기/20140101000000/20140101000000.xml)
-│   ├── 3분기/                    # 3분기 보고서 XML
-│   ├── 반기/                     # 반기 보고서 XML
-│   ├── 사업/                     # 사업보고서 XML
-│   └── 증권/                     # 증권신고서 XML
-├── standard/                     # 기업공시작성기준 PDF
-│   └── *.pdf
-├── ingest_to_os_from_pdf.py      # 표준(PDF) → OpenSearch 인제스트
-├── ingest_to_os_from_xml.py      # 공시 XML → OpenSearch 인제스트
-├── parse_pdf.py                  # PDF 파서(장/절/조 단위 분해)
-├── parse_xml.py                  # XML 파서(DART 문서 전처리·파싱)
-├── requirements.txt              # 필요 라이브러리
-```
----
+
 
 # 서버 실행
 uvicorn app.main:app --reload
@@ -37,16 +21,6 @@ pip install -r requirements.txt
 # requirements 갱신
 pip freeze > requirements.txt
 
----
-
-# 스크립트 실행
-```
-# PDF -> OpenSearch DB 주입
-python ingest_to_os_from_pdf.py
-
-# XML -> OpenSeaerch DB 주입
-python ingest_to_os_from_xml.py
-```
 ---
 
 # 데이터 확인
