@@ -1,6 +1,7 @@
 'use client'
 
 import { ChevronDown, ChevronRight, Edit, Folder, FolderOpen, FileText } from 'lucide-react'
+import React from 'react'
 
 interface DocumentSection {
   id: string

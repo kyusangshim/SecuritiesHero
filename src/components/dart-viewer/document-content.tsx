@@ -5,6 +5,7 @@ import { Button } from './ui/button'
 import { Edit3, X, AlertCircle, CheckCircle } from 'lucide-react'
 import { saveDocumentContent, updateDocumentSection } from '../../lib/dart-viewer/document-actions'
 import { getSectionKeyFromId } from '../../data/dart-viewer/mockDocumentData'
+import React from 'react'
 
 interface DocumentContentProps {
   userId: number,
@@ -34,33 +35,25 @@ export function DocumentContent({
   const [currentHtml, setCurrentHtml] = useState('')
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  // 섹션이 변경될 때마다 편집 모드 초기화
   useEffect(() => {
     setIsEditing(false)
     setSaveMessage('')
   }, [sectionId, sectionName])
 
-  // HTML 컨텐츠가 변경될 때 iframe에 로드
   useEffect(() => {
     const loadContent = async () => {
       if (!htmlContent) {
         setHasError(true)
         return
       }
-
       setIsLoading(true)
       setHasError(false)
-
       try {
         let processedHtml = htmlContent
-
-        // 섹션별 처리가 필요한 경우
         if (sectionName && sectionType && sectionType !== 'part') {
           const parser = new DOMParser()
           const doc = parser.parseFromString(htmlContent, 'text/html')
-          
           let extractedContent = ''
-          
           if (sectionType === 'section-1') {
             const section1Elements = doc.querySelectorAll('.section-1')
             for (const element of section1Elements) {
@@ -78,7 +71,6 @@ export function DocumentContent({
               }
             }
           }
-          
           if (extractedContent) {
             const head = doc.querySelector('head')?.outerHTML || ''
             processedHtml = `
@@ -94,21 +86,15 @@ export function DocumentContent({
             `
           }
         }
-
-        // iframe에 HTML 컨텐츠 로드
         if (iframeRef.current) {
           const iframe = iframeRef.current
           const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
-          
           if (iframeDoc) {
             iframeDoc.open()
             iframeDoc.write(processedHtml)
             iframeDoc.close()
-            
             setOriginalHtml(processedHtml)
             setCurrentHtml(processedHtml)
-            
-            // 로드 완료 후 읽기 전용 모드 설정
             setTimeout(() => {
               ensureReadOnlyMode(iframeDoc)
               setIsLoading(false)
@@ -121,19 +107,15 @@ export function DocumentContent({
         setIsLoading(false)
       }
     }
-
     loadContent()
   }, [htmlContent, sectionId, sectionName, sectionType])
 
-  // 읽기 전용 모드 보장 함수
   const ensureReadOnlyMode = (iframeDoc: Document) => {
     const body = iframeDoc.body
     if (body) {
       body.contentEditable = 'false'
       body.style.outline = 'none'
       body.style.outlineOffset = '0'
-      
-      // 기존 편집 스타일 제거
       const existingStyles = iframeDoc.querySelectorAll('style')
       existingStyles.forEach(style => {
         if (style.textContent?.includes('contenteditable')) {
@@ -145,77 +127,62 @@ export function DocumentContent({
 
   const handleEdit = () => {
     if (!iframeRef.current) return
-    
     const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document
     if (!iframeDoc) return
-
-    // 현재 HTML 내용 저장
     setOriginalHtml(iframeDoc.documentElement.outerHTML)
-    
-    // iframe 내용을 편집 가능하게 만들기
     const body = iframeDoc.body
     if (body) {
       body.contentEditable = 'true'
       body.style.outline = '2px dashed #3b82f6'
       body.style.outlineOffset = '4px'
-      
-      // 포커스 설정
       body.focus()
     }
-    
     setIsEditing(true)
     setSaveMessage('')
   }
 
+  // 💡 handleSave 함수 수정
   const handleSave = async () => {
     if (!iframeRef.current) return
     
     setIsSaving(true)
     setSaveMessage('')
-
     
-    let editedHtml = null;
+    let editedHtml = "";
     
     try {
       const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document
       if (!iframeDoc) return
 
-      // 저장하기 전에 편집 관련 스타일과 속성 정리
       const body = iframeDoc.body
       if (body) {
-        // contentEditable 속성 제거
         body.contentEditable = 'false'
         body.removeAttribute('contenteditable')
-        
-        // 편집 관련 인라인 스타일 제거
         body.style.outline = 'none'
         body.style.outlineOffset = '0'
       }
       
-      // 정리된 HTML 내용 가져오기
       editedHtml = iframeDoc.documentElement.outerHTML
 
-      let result
+      const token = localStorage.getItem("accessToken"); // 토큰 가져오기
+      let result;
 
       const sectionKey = getSectionKeyFromId(sectionId)
 
       if (sectionName && sectionType && sectionType !== 'part') {
-        // 하위 섹션 업데이트: 상위 HTML 파일의 해당 섹션만 업데이트
-        result = await updateDocumentSection(userId, htmlContent, sectionName, sectionType, editedHtml, sectionId, sectionKey)
+        // updateDocumentSection 호출 시 token 전달
+        result = await updateDocumentSection(userId, htmlContent, sectionName, sectionType, editedHtml, sectionId, sectionKey, token);
       } else {
-        // 전체 페이지 저장
-        result = await saveDocumentContent(userId, sectionKey, editedHtml)
+        // saveDocumentContent 호출 시 token 전달
+        result = await saveDocumentContent(userId, sectionKey, editedHtml, token);
       }
       
-      // DB 기반에서는 즉시 저장하지 않고 부모 컴포넌트에 알림
-      // 실제 DB 저장은 "최종 저장" 버튼에서 일괄 처리
       setCurrentHtml(editedHtml)
       setOriginalHtml(editedHtml)
       setIsEditing(false)
       
       setSaveMessage('편집이 완료되었습니다. "최종 저장"을 눌러 DB에 저장하세요.')
       
-      // 성공 메시지 자동 숨김
       setTimeout(() => {
         setSaveMessage('')
       }, 5000)
@@ -224,7 +191,6 @@ export function DocumentContent({
       console.error('편집 완료 오류:', error)
       setSaveMessage('편집 완료 중 오류가 발생했습니다.')
       
-      // 에러 발생 시 편집 모드 복원
       const iframeDoc = iframeRef.current?.contentDocument || iframeRef.current?.contentWindow?.document
       const body = iframeDoc?.body
       if (body) {
@@ -233,9 +199,8 @@ export function DocumentContent({
         body.style.outlineOffset = '4px'
       }
     } finally {
-      // 섹션이 수정되었음을 부모 컴포넌트에 알림 (업데이트된 HTML과 함께)
       if (onSectionModified) {
-        if (editedHtml !== null) { // editedHtml이 성공적으로 할당되었을 때만 호출
+        if (editedHtml !== null) {
           onSectionModified(sectionId, editedHtml);
         }
       }
@@ -248,12 +213,10 @@ export function DocumentContent({
     
     const iframeDoc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document
     if (iframeDoc && originalHtml) {
-      // 원본 HTML로 복원
       iframeDoc.open()
       iframeDoc.write(originalHtml)
       iframeDoc.close()
       
-      // 읽기 전용 모드 보장
       setTimeout(() => {
         ensureReadOnlyMode(iframeDoc)
       }, 100)
@@ -275,8 +238,6 @@ export function DocumentContent({
       const reader = new FileReader()
       reader.onload = () => {
         const imgSrc = reader.result as string
-
-        // iframe 안의 커서 위치에 이미지 삽입
         const iframeDoc = iframeRef.current?.contentDocument
         if (!iframeDoc) return
 
@@ -297,7 +258,6 @@ export function DocumentContent({
     input.click()
   }
 
-  // HTML 컨텐츠가 비어있는 경우 처리
   if (!htmlContent) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50">
@@ -315,7 +275,6 @@ export function DocumentContent({
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
         {isEditing ? (
           <div className="flex items-center gap-2">
-            {/* 이미지 추가 버튼 */}
             <Button
               onClick={handleImageInsert}
               size="sm"
@@ -357,7 +316,7 @@ export function DocumentContent({
         )}
       </div>
 
-      {/* 편집 모드 안내 */}
+      {/* 이하 JSX 코드는 동일 */}
       {isEditing && (
         <div className="absolute top-16 right-4 z-20 bg-blue-100 text-blue-800 p-3 rounded-md shadow-md max-w-sm">
           <div className="flex items-center gap-2">
@@ -369,8 +328,6 @@ export function DocumentContent({
           </p>
         </div>
       )}
-
-      {/* 저장 메시지 */}
       {saveMessage && (
         <div className={`absolute ${isEditing ? 'top-32' : 'top-16'} right-4 z-20 p-3 rounded-md shadow-md max-w-sm transition-opacity duration-300 ${
           saveMessage.includes('완료') || saveMessage.includes('성공')
@@ -387,8 +344,6 @@ export function DocumentContent({
           </div>
         </div>
       )}
-
-      {/* 로딩 상태 */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
           <div className="text-center">
@@ -397,8 +352,6 @@ export function DocumentContent({
           </div>
         </div>
       )}
-      
-      {/* 에러 상태 */}
       {hasError && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
           <div className="text-center">
@@ -416,8 +369,6 @@ export function DocumentContent({
           </div>
         </div>
       )}
-
-      {/* 문서 내용 */}
       <iframe
         ref={iframeRef}
         key={`${sectionId}-${sectionName || 'full'}-${htmlContent.length}`}

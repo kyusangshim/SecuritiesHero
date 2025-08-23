@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { DocumentViewer } from '../components/dart-viewer/document-viewer'
 
 export default function DartViewer() {

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 import { VersionInfo } from '../../lib/dart-viewer/version-actions'
+import React from 'react'
 
 interface VersionSelectorProps {
   currentVersion: string

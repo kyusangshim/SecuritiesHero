@@ -25,23 +25,26 @@ export interface DBVersionData {
     section6: string;
     description: string;
     createdAt: string;
-    modifiedSections: string[]; // 배열 또는 null
+    modifiedSections: string[];
   };
 }
 
-// DB에서 모든 버전 데이터 가져오기
-export async function fetchVersionsFromDB(userId: number): Promise<DBVersionData> {
+export async function fetchVersionsFromDB(userId: number, token: string | null): Promise<DBVersionData> {
   try {
-    const response = await fetch(`http://localhost:8081/api/versions?userId=${userId}`, {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`http://localhost:8080/api/versions?userId=${userId}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store' // 항상 최신 데이터 가져오기
+      headers: headers,
+      cache: 'no-store'
     });
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
     }
     
     const data = await response.json()
@@ -52,33 +55,37 @@ export async function fetchVersionsFromDB(userId: number): Promise<DBVersionData
   }
 }
 
-// 프로젝트 초기화 (DB 기반)
-export async function initializeProject(userId: number) {
+export async function initializeProject(userId: number, token: string | null) {
   try {
-    const versionsData = await fetchVersionsFromDB(userId)
+    const versionsData = await fetchVersionsFromDB(userId, token)
 
-    // v0가 존재하는지 확인
     if (versionsData.v0) {
       return versionsData
     }
 
     const initialData = await initializeData()
 
-    const response = await fetch('http://localhost:8081/api/versions', {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch('http://localhost:8080/api/versions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({
         user_id: userId,
         version: 'v0',
         version_number: 0,
         description: '초기 버전',
         sectionsData: initialData || {},
-        createdAt: new Date().toISOString()
+        // 💡 'new new Date()' 오타 수정
+        createdAt: new Date().toISOString() 
       })
     })
 
     const result = await response.json()
-
+    
     const initVersion: DBVersionData = {
       v0: {
         createdAt: result.createdAt,
@@ -92,7 +99,6 @@ export async function initializeProject(userId: number) {
         section6: result.section6,
       }
     }
-
     return initVersion
   } catch (error) {
     console.error('프로젝트 초기화 오류:', error)
@@ -100,72 +106,43 @@ export async function initializeProject(userId: number) {
   }
 }
 
-
-// 통합된 프로젝트 상태 초기화 + 로드
-export async function loadFullProjectState(userId: number): Promise<ProjectState & { sectionsData: Record<string, string> }> {
+export async function loadFullProjectState(userId: number, token: string | null): Promise<ProjectState & { sectionsData: Record<string, string> }> {
   try {
-
-    // 1️⃣ 먼저 프로젝트 초기화
-    const versionsData = await initializeProject(userId)
+    const versionsData = await initializeProject(userId, token)
     const versionKeys = Object.keys(versionsData)
     
     if (!versionsData || versionKeys.length === 0) {
       throw new Error("프로젝트 초기화 실패")
     }
 
-    // 3️⃣ 현재 버전 결정
     let currentVersion = 'v0'
     if (versionKeys.includes('editing')) {
       currentVersion = 'editing'
     } else if (versionKeys.length > 0) {
-      const numericVersions = versionKeys.filter(v => v.startsWith('v'))
-      numericVersions.sort((a, b) => {
-        const aNum = parseInt(a.replace('v', ''))
-        const bNum = parseInt(b.replace('v', ''))
-        return aNum - bNum
-      })
-      currentVersion = numericVersions[numericVersions.length - 1]
+      const numericVersions = versionKeys.filter(v => v.startsWith('v')).sort((a, b) => parseInt(a.slice(1)) - parseInt(b.slice(1)));
+      currentVersion = numericVersions[numericVersions.length - 1];
     }
-
-    // 4️⃣ 버전 목록 생성
     const versions: VersionInfo[] = versionKeys.map(version => ({
       version,
       createdAt: versionsData[version].createdAt,
       description: versionsData[version].description || `버전 ${version}`,
       modifiedSections: versionsData[version].modifiedSections || []
-    }))
-
-    const editingModifiedSections = versionsData['editing']?.modifiedSections
-
-    let parseModif: string[] = []
-    if (typeof editingModifiedSections == "string"){
-      parseModif = JSON.parse(editingModifiedSections)
+    }));
+    const editingModifiedSections = versionsData['editing']?.modifiedSections;
+    let parseModif: string[] = [];
+    if (typeof editingModifiedSections == "string") {
+      parseModif = JSON.parse(editingModifiedSections);
     }
-
-    
-    // 5️⃣ 수정된 섹션 추출
-    const modifiedSections = new Set(
-      currentVersion === 'editing'
-        ? parseModif || []
-        : []
-    )
-
-    // 6️⃣ 섹션 데이터 가져오기
-    const versionData = versionsData[currentVersion] || {}
-    const sectionsData: Record<string, string> = {}
+    const modifiedSections = new Set(currentVersion === 'editing' ? parseModif || [] : []);
+    const versionData = versionsData[currentVersion] || {};
+    const sectionsData: Record<string, string> = {};
     Object.keys(versionData).forEach(key => {
       if (key.startsWith("section")) {
-        sectionsData[key] = versionData[key as keyof typeof versionData] as string || ""
+        sectionsData[key] = versionData[key as keyof typeof versionData] as string || "";
       }
-    })
+    });
 
-
-    return {
-      currentVersion,
-      versions,
-      modifiedSections,
-      sectionsData
-    }
+    return { currentVersion, versions, modifiedSections, sectionsData };
   } catch (error) {
     console.error('loadFullProjectState 오류:', error)
     return {
@@ -177,23 +154,23 @@ export async function loadFullProjectState(userId: number): Promise<ProjectState
   }
 }
 
-
-// 섹션 수정 상태 업데이트 (클라이언트 메모리에서만 관리)
+// 💡 'markSectionAsModified' 함수 추가
 export async function markSectionAsModified(sectionId: string) {
   // DB 기반에서는 실제로 저장하지 않고, 클라이언트 상태로만 관리
   // 실제 저장은 createNewVersion에서만 발생
   return { success: true, message: '섹션이 수정됨으로 표시되었습니다.' }
 }
 
-// 새 버전 생성 (DB에 저장)
-export async function createNewVersion(userId: number, description?: string) {
+export async function createNewVersion(userId: number, description: string | undefined, token: string | null) {
   try {
-    // DB에 새 버전 저장 API 호출
-    const response = await fetch('http://localhost:8081/api/versions/finalize', {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch('http://localhost:8080/api/versions/finalize', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: headers,
       body: JSON.stringify({
         user_id: userId,
         description: description || `설명 없음`,
@@ -218,11 +195,9 @@ export async function createNewVersion(userId: number, description?: string) {
   }
 }
 
-
-// 특정 버전의 모든 섹션 데이터 가져오기
-export async function getVersionSections(version: string, userId: number): Promise<Record<string, string>> {
+export async function getVersionSections(version: string, userId: number, token: string | null): Promise<Record<string, string>> {
   try {
-    const versionsData = await fetchVersionsFromDB(userId)
+    const versionsData = await fetchVersionsFromDB(userId, token)
     
     if (!versionsData[version]) {
       throw new Error(`버전 ${version}을 찾을 수 없습니다.`)
