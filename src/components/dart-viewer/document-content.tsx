@@ -6,6 +6,7 @@ import { Edit3, X, AlertCircle, CheckCircle } from 'lucide-react'
 import { saveDocumentContent, updateDocumentSection } from '../../lib/dart-viewer/document-actions'
 import { getSectionKeyFromId } from '../../data/dart-viewer/mockDocumentData'
 import React from 'react'
+import axios from '../../api/axios'
 
 interface DocumentContentProps {
   userId: number,
@@ -15,6 +16,16 @@ interface DocumentContentProps {
   sectionType?: 'part' | 'section-1' | 'section-2'
   onSectionModified?: (sectionId: string, updatedHTML: string) => void
   modifiedSections?: Set<string>
+}
+
+function fillTemplate(template:string, data: Record<string, any>): string {
+  let result = template;
+  for (const key in data) {
+    const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+    const value = data[key] ?? '';
+    result = result.replace(placeholder, value);
+  }
+  return result;
 }
 
 export function DocumentContent({ 
@@ -35,44 +46,76 @@ export function DocumentContent({
   const [currentHtml, setCurrentHtml] = useState('')
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
+  const [templateData, setTemplateData] = useState<Record<string, any> | null>(null);
+
+  useEffect(() => {
+    const fetchTemplateData = async () => {
+      try {
+        const response = await axios.get('/api/dart/test/01571107/all-data');
+        if (response.data && response.data.status === "SUCCESS") {
+          const apiData = response.data.data;
+          
+          // [수정] API 응답 데이터 키를 템플릿 변수 키로 수동 매핑합니다.
+          const mappedData = {
+            corp_name: apiData.companyOverview?.corpName,
+            ceo_name: apiData.companyOverview?.ceoNm,
+            address: apiData.companyOverview?.adres,
+            establishment_date: apiData.companyOverview?.estDt
+            // ... 필요한 만큼 다른 키들도 여기에 추가 ...
+          };
+
+          setTemplateData(mappedData);
+        } else {
+          throw new Error("템플릿 데이터 로드 실패");
+        }
+      } catch (error) {
+        console.error("템플릿 데이터 로딩 중 오류 발생:", error);
+        setHasError(true);
+      }
+    };
+    fetchTemplateData();
+  }, []); 
+
+
   useEffect(() => {
     setIsEditing(false)
     setSaveMessage('')
   }, [sectionId, sectionName])
 
   useEffect(() => {
-    const loadContent = async () => {
-      if (!htmlContent) {
-        setHasError(true)
-        return
+    const loadContent = () => {
+      if (!htmlContent || !templateData) {
+        if (!htmlContent) setHasError(true);
+        return;
       }
-      setIsLoading(true)
-      setHasError(false)
+      setIsLoading(true);
+      setHasError(false);
       try {
-        let processedHtml = htmlContent
+        let processedHtml = htmlContent;
+
         if (sectionName && sectionType && sectionType !== 'part') {
-          const parser = new DOMParser()
-          const doc = parser.parseFromString(htmlContent, 'text/html')
-          let extractedContent = ''
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlContent, 'text/html');
+          let extractedContent = '';
           if (sectionType === 'section-1') {
-            const section1Elements = doc.querySelectorAll('.section-1')
-            for (const element of section1Elements) {
+            const section1Elements = doc.querySelectorAll('.section-1');
+            for (const element of Array.from(section1Elements)) {
               if (element.getAttribute('data-section') === sectionName) {
-                extractedContent = element.outerHTML
-                break
+                extractedContent = element.outerHTML;
+                break;
               }
             }
           } else if (sectionType === 'section-2') {
-            const section2Elements = doc.querySelectorAll('.section-2')
-            for (const element of section2Elements) {
+            const section2Elements = doc.querySelectorAll('.section-2');
+            for (const element of Array.from(section2Elements)) {
               if (element.getAttribute('data-section') === sectionName) {
-                extractedContent = element.outerHTML
-                break
+                extractedContent = element.outerHTML;
+                break;
               }
             }
           }
           if (extractedContent) {
-            const head = doc.querySelector('head')?.outerHTML || ''
+            const head = doc.querySelector('head')?.outerHTML || '';
             processedHtml = `
               <!DOCTYPE html>
               <html lang="ko">
@@ -83,32 +126,34 @@ export function DocumentContent({
                 </div>
               </body>
               </html>
-            `
+            `;
           }
         }
+
+        processedHtml = fillTemplate(processedHtml, templateData);
+
         if (iframeRef.current) {
-          const iframe = iframeRef.current
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+          const iframeDoc = iframeRef.current.contentDocument;
           if (iframeDoc) {
-            iframeDoc.open()
-            iframeDoc.write(processedHtml)
-            iframeDoc.close()
-            setOriginalHtml(processedHtml)
-            setCurrentHtml(processedHtml)
+            iframeDoc.open();
+            iframeDoc.write(processedHtml);
+            iframeDoc.close();
+            setOriginalHtml(processedHtml);
+            setCurrentHtml(processedHtml);
             setTimeout(() => {
-              ensureReadOnlyMode(iframeDoc)
-              setIsLoading(false)
-            }, 100)
+              ensureReadOnlyMode(iframeDoc);
+              setIsLoading(false);
+            }, 100);
           }
         }
       } catch (error) {
-        console.error('HTML 컨텐츠 로드 오류:', error)
-        setHasError(true)
-        setIsLoading(false)
+        console.error('HTML 컨텐츠 로드 오류:', error);
+        setHasError(true);
+        setIsLoading(false);
       }
-    }
-    loadContent()
-  }, [htmlContent, sectionId, sectionName, sectionType])
+    };
+    loadContent();
+  }, [htmlContent, sectionId, sectionName, sectionType, templateData]);
 
   const ensureReadOnlyMode = (iframeDoc: Document) => {
     const body = iframeDoc.body
