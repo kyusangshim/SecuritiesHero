@@ -57,10 +57,12 @@ export function DocumentContent({
           
           // [수정] API 응답 데이터 키를 템플릿 변수 키로 수동 매핑합니다.
           const mappedData = {
-            corp_name: apiData.companyOverview?.corpName,
+            company_name : apiData.companyOverview?.corpName,
             ceo_name: apiData.companyOverview?.ceoNm,
             address: apiData.companyOverview?.adres,
-            establishment_date: apiData.companyOverview?.estDt
+            establishment_date: apiData.companyOverview?.estDt,
+            company_phone : apiData.companyOverview?.phnNo,
+            company_website: apiData.companyOverview?.hmUrl,
             // ... 필요한 만큼 다른 키들도 여기에 추가 ...
           };
 
