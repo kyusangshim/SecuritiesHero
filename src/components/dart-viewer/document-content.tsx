@@ -52,6 +52,8 @@ export function DocumentContent({
     const fetchTemplateData = async () => {
       try {
         const response = await axios.get('/api/dart/test/01571107/all-data');
+        // const response_os=await axios.get('http://192.168.0.77:9200/rpt_biz/_search');
+        // console.log('Elasticsearch response:', response_os.data);
         if (response.data && response.data.status === "SUCCESS") {
           const apiData = response.data.data;
           
@@ -63,6 +65,11 @@ export function DocumentContent({
             establishment_date: apiData.companyOverview?.estDt,
             company_phone : apiData.companyOverview?.phnNo,
             company_website: apiData.companyOverview?.hmUrl,
+            businessRiskTitle: "ai에몽 해줘 벅벅",
+            businessRiskValue: "ai에몽 해줘 벅벅",
+            companyRiskTitle: "ai에몽 해줘 벅벅",
+            companyRiskValue: "ai에몽 해줘 벅벅",
+            otherRiskTitle : "ai에몽 해줘 벅벅",
             // ... 필요한 만큼 다른 키들도 여기에 추가 ...
           };
 
