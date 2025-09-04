@@ -152,7 +152,7 @@ def extract_zip_file_to_dict(zip_data: bytes) -> Dict[str, str]:
         return {}
 
 # 접수번호로 XML 파일을 파싱하는 함수
-def parse_xml_content(rcept_no: str) -> Dict:
+def parse_xml_content(rcept_no: str, corp_code: str) -> Dict:
     file=rept_down_by_list(rcept_no) # 접수번호로 파일 다운로드
     unzip_file=extract_zip_file_to_dict(file) # 압축 해제
     print(unzip_file)
@@ -160,8 +160,8 @@ def parse_xml_content(rcept_no: str) -> Dict:
     try: # XML 파일을 파싱하여 OpenSearch에 적재
         success, failed = bulk(
             os_client,
-            one_parse_xml(unzip_file),
-            chunk_size=500,
+            one_parse_xml(unzip_file, corp_code),
+            chunk_size=30,
             stats_only=True
         )
         print(f"Bulk ingestion completed. Succeeded: {success}, Failed: {failed}")
@@ -177,7 +177,7 @@ def repots_by_corp_code_parse_xml(corp_code: str):
     success_count = 0
     
     for report in report_list:
-        success_count += parse_xml_content(report.rcept_no)  # 각 보고서의 접수번호로 XML 파일을 다운로드 및 파싱
+        success_count += parse_xml_content(report.rcept_no, corp_code)  # 각 보고서의 접수번호로 XML 파일을 다운로드 및 파싱
         
     return "sueccess: " + str(success_count)
         

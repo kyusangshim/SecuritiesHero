@@ -89,7 +89,7 @@ def generate_actions(data_dir):
     print("All folders have been processed up to the file limit.")
 
 # 하나만 파싱해서 오픈서치에 넣기
-def one_parse_xml(file_dict: Dict[str, Any]) -> Generator[Dict[str, Any], None, None]:
+def one_parse_xml(file_dict: Dict[str, Any], corp_code: str) -> Generator[Dict[str, Any], None, None]:
     try:
         # 딕셔너리 키에 안전하게 접근합니다.
         xml_content = file_dict.get("content")
@@ -105,8 +105,7 @@ def one_parse_xml(file_dict: Dict[str, Any]) -> Generator[Dict[str, Any], None, 
         
         # 파싱된 데이터가 유효한지 확인
         if parsed_data and parsed_data.get("doc_id"):
-            doc_code = parsed_data.get("doc_code", "99999")
-            target_index = DOC_CODE_INDEX_MAP.get(doc_code, "rpt_other")
+            target_index= f"rpt_{corp_code}" # 인덱스를 기업코드로 설정
 
             # OpenSearch에 보낼 데이터를 yield
             yield {
