@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from opensearchpy.helpers import bulk
 
-from app.opensearch_client import os_client_reomte as remote_client
+from app.opensearch_client import os_client_remote as remote_client
 from app.services.financials.financials_service import get_final_list
 from app.constants.financials.financials_mappings import financial_mapping
 
