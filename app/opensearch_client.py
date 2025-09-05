@@ -2,36 +2,34 @@ from opensearchpy import OpenSearch
 from .config import settings
 from urllib.parse import urlparse
 
-# 환경변수 설정
-from app.config import settings
+# 환경변수에서 OS_HOST 가져오기
 OS_HOST = settings.OS_HOST
 
-# OpenSearch 접속 정보
+# 기본 OpenSearch 클라이언트
 os_client = OpenSearch(
-    hosts=OS_HOST,# OpenSearch 노드 URL
+    hosts=OS_HOST,
     http_compress=True,
     retry_on_timeout=True,
     max_retries=3,
     request_timeout=60,
 )
 
-
-
-
 # 우리가 사용하는 외부 OpenSearch와 연결하는 클라이언트
-uri="http://192.168.0.77:9200"
-
-# URI 파싱
+uri = "http://localhost:9200"
+#uri = "http://192.168.0.77:9200"
 parsed = urlparse(uri)
 host_info = {
     "host": parsed.hostname,
     "port": parsed.port
 }
 
-# OpenSearch client 생성
-os_client_reomte = OpenSearch(
+os_client_remote = OpenSearch(
     hosts=[host_info],
-    http_auth=("admin", "admin"),  # 필요한 경우
+    #http_auth=("admin", "admin"),
     use_ssl=(parsed.scheme == "https"),
     verify_certs=False
 )
+
+# ✅ 서비스에서 import 할 수 있도록 함수 추가
+def get_opensearch_client():
+    return os_client
