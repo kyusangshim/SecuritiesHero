@@ -195,4 +195,7 @@ def xml_call(rcept_no: str) -> str:
     
     # 딕셔너리에서 'content' 키의 값(XML 문자열)을 꺼내서 전달
     xml_content = unzip_file['content']
-    return convert_dart_xml_to_html_fragment(xml_content)
+    html_content=convert_dart_xml_to_html_fragment(xml_content)
+
+    
+    return (html_content)

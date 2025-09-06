@@ -4,7 +4,8 @@ import re
 import os
 import json
 import codecs
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
+
 
 
 def preprocess_xml_content(xml_string):
@@ -312,58 +313,57 @@ def _combine_contents(items):
 def convert_dart_xml_to_html_fragment(xml_string: str) -> str:
     """
     DART XML 문자열을 받아 표준 HTML 콘텐츠 조각(fragment) 문자열로 변환하여 반환합니다.
-
-    Args:
-        xml_string (str): 변환할 DART XML 원본 문자열.
-
-    Returns:
-        str: 변환된 HTML 콘텐츠 조각 문자열.
+    (<html>, <head>, <body> 뼈대 및 CSS 없이 내용물만 반환)
     """
     soup = BeautifulSoup(xml_string, 'lxml-xml')
 
-    # 2. 비표준 태그를 표준 HTML 태그로 변환하는 규칙을 확장합니다.
-    tag_map = {
-        'DOCUMENT-NAME': 'h1',
-        'COVER-TITLE': 'h1',
-        'TITLE': 'h2',
-        'SECTION-1': 'div',
-        'SECTION-2': 'div',
-        'COVER': 'div',
-        'P': 'p',
-        'TE': 'td',
-        'TU': 'td',
-        'PGBRK': 'hr',
-        'TABLE-GROUP': 'div',      # <TABLE-GROUP>을 <div>로 변환
-        'IMAGE': 'figure',         # <IMAGE>를 <figure>로 변환
-        'IMG-CAPTION': 'figcaption' # 이미지 캡션을 <figcaption>으로 변환
-    }
-    
-    tags_to_add_class = ['SECTION-1', 'SECTION-2', 'COVER', 'TABLE-GROUP']
+    # 1. <P USERMARK=" B"> 태그를 <b> 태그와 공백 <p> 태그로 선처리합니다.
+    for p_tag in soup.find_all('P', attrs={'USERMARK': ' B'}):
+        # 태그 이름을 'b'로 변경
+        p_tag.name = 'p'
+        # 사용한 속성 제거
+        del p_tag['USERMARK']
+        
+        # 바로 뒤에 공백 <p> 태그를 추가
+        spacer_p = soup.new_tag('p')
+        spacer_p.string = 'ㅤ'
+        p_tag.insert_after(spacer_p)
 
-    for old_tag_name, new_tag_name in tag_map.items():
-        for tag in soup.find_all(old_tag_name):
-            tag.name = new_tag_name
-            if old_tag_name in tags_to_add_class:
+    # 2. <span> 태그 제거 (내용은 유지)
+    for span_tag in soup.find_all('SPAN'):
+        span_tag.unwrap()
+
+    # 3. 나머지 비표준 태그를 표준 HTML 태그로 변환
+    tag_map = {
+        'DOCUMENT-NAME': 'h1', 'COVER-TITLE': 'h1', 'TITLE': 'h2',
+        'SECTION-1': 'div', 'SECTION-2': 'div', 'COVER': 'div',
+        'P': 'p', 'TE': 'td', 'TU': 'td', 'PGBRK': 'hr',
+        'TABLE-GROUP': 'div', 'IMAGE': 'figure', 'IMG-CAPTION': 'figcaption'
+    }
+    tags_to_add_class = ['SECTION-1', 'SECTION-2', 'COVER', 'TABLE-GROUP']
+    for old_tag, new_tag in tag_map.items():
+        for tag in soup.find_all(old_tag):
+            tag.name = new_tag
+            if old_tag in tags_to_add_class:
                 original_classes = tag.get('class', [])
-                new_class = old_tag_name.lower().replace('_', '-')
+                new_class = old_tag.lower().replace('_', '-')
                 if new_class not in original_classes:
                     original_classes.append(new_class)
                 tag['class'] = original_classes
 
-    # IMG 태그를 표준 img 태그로 변환 (대소문자 구분 없이 찾음)
-    for img_tag in soup.find_all(re.compile('^img$', re.I)):
-        img_src = (img_tag.get('src') or img_tag.get('SRC') or img_tag.string or '').strip()
+    # IMG 태그를 표준 img 태그로 변환
+    for img_tag in soup.find_all('IMG'):
+        img_src = img_tag.string or ''
         img_tag.name = 'img'
-        img_tag.attrs = {'src': img_src, 'alt': img_src} 
+        img_tag.attrs = {'src': img_src.strip(), 'alt': 'DART 문서 이미지'}
         img_tag.string = ''
 
-    # 3. 모든 태그를 순회하며 속성 정리 및 소문자화를 수행합니다.
-    attrs_to_keep = ['rowspan', 'colspan', 'src', 'alt', 'class', 'border', 'width', 'height']
-    
+    # 4. 모든 태그를 순회하며 속성 정리 및 소문자화
+    attrs_to_keep = ['rowspan', 'colspan', 'src', 'alt', 'class', 'border']
     for tag in soup.find_all(True):
         if tag.name.isupper():
             tag.name = tag.name.lower()
-
+        
         current_attrs = tag.attrs
         new_attrs = {}
         for attr_key, attr_value in current_attrs.items():
@@ -371,41 +371,25 @@ def convert_dart_xml_to_html_fragment(xml_string: str) -> str:
                 new_attrs[attr_key.lower()] = attr_value
         tag.attrs = new_attrs
 
-    # 테이블 내의 불필요한 p 태그를 제거하고 내용물만 남깁니다.
-    for p_in_table in soup.select('table p'):
-        p_in_table.unwrap()
+    # 5. <p> 또는 <table> 태그가 연속으로 나타나는 경우, 그 사이에 공백 <p> 태그를 삽입합니다.
+    tags_to_check = soup.find_all(['p', 'table'])
+    for tag in tags_to_check:
+        # 현재 태그가 이미 공백용 p태그라면 건너뛰어 중복 추가를 방지합니다.
+        if tag.name == 'p' and tag.get_text(strip=True) == 'ㅤ':
+            continue
 
-    # 목록/제목 형식의 p 태그 앞에 일관된 공백 p 태그 추가
-    list_item_pattern = re.compile(r'^\s*(?:[가-힣]|\d+)\.\s*')
-    for p_tag in soup.find_all('p'):
-        if list_item_pattern.match(p_tag.get_text(strip=True)):
-            prev_sibling = p_tag.find_previous_sibling()
-            is_prev_sibling_spacer = False
-            if prev_sibling and prev_sibling.name == 'p':
-                if not prev_sibling.get_text(strip=True):
-                    is_prev_sibling_spacer = True
-            if not is_prev_sibling_spacer:
-                spacer_p = soup.new_tag('p')
-                spacer_p.string = 'ㅤ'
-                p_tag.insert_before(spacer_p)
-                
-    # ★★★★★ 추가된 코드 블록: 연속되는 빈 p태그 사이에 공백 p태그 삽입 ★★★★★
-    # find_all로 먼저 리스트를 만들어두면, 반복 중 soup 객체가 변경되어도 안전합니다.
-    all_p_tags = soup.find_all('p')
-    for p_tag in all_p_tags:
-        # 현재 p 태그가 비어있는지(공백만 포함) 확인
-        if not p_tag.get_text(strip=True):
-            # 바로 다음에 오는 형제(sibling) 태그를 찾음
-            next_sibling = p_tag.find_next_sibling()
-            
-            # 다음 형제가 존재하고, 그것 역시 비어있는 p 태그인지 확인
-            if next_sibling and next_sibling.name == 'p' and not next_sibling.get_text(strip=True):
-                # 조건이 맞으면, 현재 p 태그 바로 뒤에 공백 p 태그를 삽입
-                spacer_p = soup.new_tag('p')
-                spacer_p.string = 'ㅤ' # 보이지 않는 공백 문자
-                p_tag.insert_after(spacer_p)
-                
-    # 4. body 태그 안의 내용물을 HTML 형식의 문자열로 만듭니다.
+        next_s = tag.next_sibling
+        # next_sibling이 텍스트 노드(주로 공백이나 줄바꿈)인 경우, 그 다음 sibling을 계속 찾습니다.
+        while isinstance(next_s, NavigableString):
+            next_s = next_s.next_sibling
+        
+        # 다음 sibling이 존재하고, 그것이 'p' 또는 'table' 태그인 경우
+        if next_s and next_s.name in ['p', 'table']:
+            new_p = soup.new_tag('p')
+            new_p.string = 'ㅤ'  # 간격을 위한 한글 채움 문자(U+3164)
+            tag.insert_after(new_p)
+
+    # 6. body 태그 안의 내용물을 HTML 형식의 문자열로 만듭니다.
     raw_html = ""
     body_element = soup.find('body')
     if body_element:
@@ -418,7 +402,42 @@ def convert_dart_xml_to_html_fragment(xml_string: str) -> str:
             raw_html = soup.decode(formatter="html")
 
     # 5. 최종 반환 전, 불필요한 문자들을 제거합니다.
-    cleaned_html = raw_html.replace("\n", "").replace('\\', '').replace('"', '').replace('<p> </p>', '')
+    
+    head="""
+        <!DOCTYPE html>
+        <html style="border:0">
+
+        <head>
+            <title></title>
+            <meta http-equiv="X-UA-Compatible" content="ie=edge">
+            <meta http-equiv="X-UA-TextLayoutMetrics" content="gdi">
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <link rel="stylesheet" type="text/css" href="https://dart.fss.or.kr/css/report_xml.css">
+            <style>
+                span.highlight {
+                    background-color: #ffff00;
+                }
+
+                span.highlight.on {
+                    background-color: #ffb700;
+                }
+
+                .bookmark {
+                    background-color: #FFF0F0 !important;
+                    text-decoration: underline;
+                }
+            </style>
+        </head>
+
+        <body bgcolor="#FFFFFF">
+    """
+    tail="""
+        </body>
+
+        </html>
+    """
+    
+    cleaned_html = (head+raw_html+tail).replace("\n", "").replace('\\', '').replace('"', '').replace('<p> </p>', '')
     
     return cleaned_html
 
