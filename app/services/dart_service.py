@@ -14,8 +14,8 @@ from opensearchpy.helpers import bulk
 from opensearchpy import OpenSearch
 from app.opensearch_client import os_client
 
-
-from app.services.parsing.ingest_to_os_from_xml import one_parse_xml
+from app.services.parsing.ingest_to_os_from_xml import one_parse_xml, one_parse_xml_biz
+from app.services.parsing.parse_xml import convert_dart_xml_to_html_fragment
 
 from app.schemas.report import ReportListResponse
 
@@ -186,3 +186,13 @@ def repots_by_corp_code_parse_xml(corp_code: str):
 def test_service(corp_code: str):
     return repots_by_corp_code_parse_xml(corp_code)  # 기업코드로 보고서 리스트를 가져오고 XML 파일을 파싱하는 함수 호출
 
+
+
+# 접수번호로 XML 파일 다운로드
+def xml_call(rcept_no: str) -> str:
+    file=rept_down_by_list(rcept_no)
+    unzip_file=extract_zip_file_to_dict(file)
+    
+    # 딕셔너리에서 'content' 키의 값(XML 문자열)을 꺼내서 전달
+    xml_content = unzip_file['content']
+    return convert_dart_xml_to_html_fragment(xml_content)
