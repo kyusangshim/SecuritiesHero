@@ -308,7 +308,49 @@ def _combine_contents(items):
     final_sec_content = final_sec_content.strip()
     return final_sec_content
 
+def preprocess_html_content(html_string: str, start_section_title: str, end_section_title: str) -> str:
+    """
+    HTML 문자열에서 시작 섹션 이전과 끝 섹션 이후의 모든 요소를 제거하여 본문만 남깁니다.
 
+    Args:
+        html_string (str): 처리할 원본 HTML 문자열.
+        start_section_title (str): 본문 시작으로 간주할 섹션의 제목.
+        end_section_title (str): 본문 끝으로 간주할 섹션의 제목.
+
+    Returns:
+        str: 전처리된 HTML 문자열.
+    """
+    soup = BeautifulSoup(html_string, 'html.parser')
+
+    # --- 1. 시작 섹션 이전의 모든 요소 제거 ---
+    start_title_tag = soup.find('h2', string=lambda t: t and t.strip() == start_section_title)
+    if start_title_tag:
+        start_content_div = start_title_tag.find_parent('div')
+        if start_content_div:
+            for sibling in list(start_content_div.find_previous_siblings()):
+                sibling.decompose()
+        else:
+            print(f"경고: 시작 제목 '{start_section_title}'을 포함하는 부모 div를 찾을 수 없습니다.")
+    else:
+        print(f"경고: 시작 제목 '{start_section_title}'을 찾을 수 없어 앞부분을 제거하지 못했습니다.")
+
+    # --- 2. 끝 섹션부터 모든 요소 제거 ---
+    end_title_tag = soup.find('h2', string=lambda t: t and t.strip() == end_section_title)
+    if end_title_tag:
+        end_content_div = end_title_tag.find_parent('div')
+        if end_content_div:
+            # 끝 섹션 이후의 모든 형제 요소들을 제거
+            for sibling in list(end_content_div.find_next_siblings()):
+                sibling.decompose()
+            # 끝 섹션 자체를 제거
+            end_content_div.decompose()
+        else:
+            print(f"경고: 끝 제목 '{end_section_title}'을 포함하는 부모 div를 찾을 수 없습니다.")
+    else:
+        print(f"경고: 끝 제목 '{end_section_title}'을 찾을 수 없어 뒷부분을 제거하지 못했습니다.")
+        
+    # 3. 수정된 BeautifulSoup 객체를 다시 문자열로 변환하여 반환합니다.
+    return str(soup)
 
 def convert_dart_xml_to_html_fragment(xml_string: str) -> str:
     """
@@ -437,7 +479,9 @@ def convert_dart_xml_to_html_fragment(xml_string: str) -> str:
         </html>
     """
     
-    cleaned_html = (head+raw_html+tail).replace("\n", "").replace('\\', '').replace('"', '').replace('<p> </p>', '')
+    raw_html=preprocess_html_content(raw_html, "I. 회사의 개요", "【 전문가의 확인 】")
+    
+    cleaned_html = (head+raw_html+tail).replace("\n", "").replace('\\', '').replace('"', '').replace('<p> </p>', '')#raw_html
     
     return cleaned_html
 
