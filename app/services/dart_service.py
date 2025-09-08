@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass
 import requests
 
+
 #압축해제용
 import zipfile
 import io

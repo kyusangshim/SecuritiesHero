@@ -480,12 +480,78 @@ def convert_dart_xml_to_html_fragment(xml_string: str) -> str:
     """
     
     raw_html=preprocess_html_content(raw_html, "I. 회사의 개요", "【 전문가의 확인 】")
-    
-    cleaned_html = (head+raw_html+tail).replace("\n", "").replace('\\', '').replace('"', '').replace('<p> </p>', '')#raw_html
+    raw_html=increase_width_in_html(raw_html, increase_value=20)
+    raw_html=add_data_section_attributes(raw_html)
+    cleaned_html = (head+raw_html+tail).replace("\n", "").replace('\\', '').replace('<h2>', "<h2 style='color: #0000FF;'>").replace('\"', "'").replace('<p> </p>', '')#raw_html
+
     
     return cleaned_html
 
+def add_data_section_attributes(html_string: str) -> str:
+    """
+    HTML 문자열을 파싱하여 section div 내의 h2 제목을
+    해당 div의 'data-section' 속성으로 추가합니다.
 
+    Args:
+        html_string (str): 처리할 원본 HTML 문자열.
+
+    Returns:
+        str: 'data-section' 속성이 추가된 HTML 문자열.
+    """
+    soup = BeautifulSoup(html_string, 'html.parser')
+
+    # section-1 또는 section-2 클래스를 가진 모든 div를 찾습니다.
+    section_divs = soup.find_all('div', class_=['section-1', 'section-2'])
+
+    for div in section_divs:
+        # div 내의 첫 번째 h2 태그를 찾습니다.
+        h2_tag = div.find('h2')
+
+        if h2_tag:
+            # h2 태그의 텍스트를 가져와서 정리합니다.
+            title_text = h2_tag.get_text(strip=True)
+
+            # 'I.', '1.' 와 같은 접두어 및 특수 기호 '【', '】'를 제거합니다.
+            cleaned_title = re.sub(r'^[IVXLC\d]+\.\s*', '', title_text)
+            cleaned_title = cleaned_title.replace('【', '').replace('】', '').strip()
+            
+            # div에 data-section 속성을 추가합니다.
+            div['data-section'] = cleaned_title
+            
+    return str(soup)
+
+def increase_width_in_html(html_string: str, increase_value: int) -> str:
+    """
+    HTML 문자열을 파싱하여 숫자형 width 속성 값을 지정된 만큼 증가시킵니다.
+
+    Args:
+        html_string (str): 처리할 원본 HTML 문자열.
+        increase_value (int): 각 width 값에 더할 정수. 기본값은 20입니다.
+
+    Returns:
+        str: width 값이 조정된 HTML 문자열.
+    """
+    # 1. BeautifulSoup으로 HTML 문자열을 파싱합니다.
+    soup = BeautifulSoup(html_string, 'html.parser')
+
+    # 2. 'width' 속성을 가진 모든 태그를 찾습니다.
+    for tag in soup.find_all(attrs={"width": True}):
+        try:
+            current_width_str = tag['width']
+            
+            # 3. 너비 값이 숫자로만 이루어져 있는지 확인합니다 (예: '100%', 'auto' 등은 제외).
+            if current_width_str.isnumeric():
+                # 4. 숫자 값에 increase_value를 더한 후, 다시 문자열로 속성 값을 업데이트합니다.
+                new_width = int(current_width_str) + increase_value
+                tag['width'] = str(new_width)
+                
+        except (ValueError, TypeError):
+            # 너비 값을 숫자로 변환할 수 없는 경우, 경고를 출력하고 건너뜁니다.
+            # print(f"Warning: Could not convert width '{tag['width']}' to a number. Skipping.")
+            continue
+            
+    # 5. 수정된 BeautifulSoup 객체를 다시 문자열로 변환하여 반환합니다.
+    return str(soup)
 
 
 

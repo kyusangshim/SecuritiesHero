@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from fastapi.responses import HTMLResponse
+
 from app.services.dart_service import test_service, xml_call
 from ..opensearch_client import os_client as client
 
@@ -43,6 +45,6 @@ def search_documents(q: str):
 def test(corp_code: str):
     return test_service(corp_code)
 
-@router.get("/file/{rcept_no}")
+@router.get("/file/{rcept_no}", response_class=HTMLResponse)
 def health_check(rcept_no: str):
     return xml_call(rcept_no)
