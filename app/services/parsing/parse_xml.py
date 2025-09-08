@@ -359,7 +359,7 @@ def convert_dart_xml_to_html_fragment(xml_string: str) -> str:
         img_tag.string = ''
 
     # 4. 모든 태그를 순회하며 속성 정리 및 소문자화
-    attrs_to_keep = ['rowspan', 'colspan', 'src', 'alt', 'class', 'border']
+    attrs_to_keep = ['rowspan', 'colspan', 'src', 'alt', 'class', 'border', 'width', 'height']
     for tag in soup.find_all(True):
         if tag.name.isupper():
             tag.name = tag.name.lower()
