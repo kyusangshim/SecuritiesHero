@@ -26,7 +26,7 @@ async def generate_equity_annotations(
     주식 공모 주석 생성 (RAG 포함)
     
     - OpenSearch에서 유사 사례를 검색하여 RAG 방식으로 주석 생성
-    - Claude 3.5 Sonnet을 사용하여 전문적인 주식 공모 주석 3개 생성
+    - OpenRouter를 사용하여 전문적인 주식 공모 주석 5개 생성
     """
     try:
         logger.info(f"주식 공모 주석 생성 요청 - 회사: {request.get_corp_name()}")
@@ -63,28 +63,6 @@ async def generate_simple_annotations(
     except Exception as e:
         logger.error(f"간단 주석 생성 API 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"간단 주석 생성 실패: {str(e)}")
-
-@router.post("/annotations/with-examples", response_model=EquityAnnotationResponse)
-async def generate_annotations_with_examples(
-    request: EquityAnnotationRequest,
-    service: EquityAnnotationService = Depends(get_equity_service)
-):
-    """
-    예시 기반 주식 공모 주석 생성
-    
-    - OpenSearch에서 관련 주석 예시를 검색하여 참고
-    - 유사한 패턴의 주석 생성
-    """
-    try:
-        logger.info(f"예시 기반 주석 생성 요청 - 회사: {request.get_corp_name()}")
-        
-        response = await service.generate_with_examples(request)
-        
-        return response
-        
-    except Exception as e:
-        logger.error(f"예시 기반 주석 생성 API 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"예시 기반 주석 생성 실패: {str(e)}")
 
 @router.get("/health")
 async def health_check(service: EquityAnnotationService = Depends(get_equity_service)):
@@ -142,18 +120,13 @@ async def process_kafka_message(
     try:
         logger.info(f"Kafka 메시지 처리 시작: {message}")
         
-        # 메시지를 EquityAnnotationRequest로 변환
-        request = EquityAnnotationRequest(**message.get("data", {}))
+        # 백엔드 FastApiRequestDto 구조에 맞춰서 처리
+        response = await service.process_kafka_request(message)
         
-        # 백그라운드에서 처리
-        background_tasks.add_task(
-            process_annotation_request,
-            service,
-            request,
-            message.get("correlation_id", "")
-        )
+        # 실제 환경에서는 여기서 Kafka로 응답을 다시 전송해야 함
+        logger.info(f"Kafka 메시지 처리 완료: requestId={response.requestId}, status={response.status}")
         
-        return {"status": "accepted", "message": "요청이 접수되었습니다."}
+        return {"status": "processed", "requestId": response.requestId}
         
     except Exception as e:
         logger.error(f"Kafka 메시지 처리 오류: {str(e)}")
@@ -166,7 +139,7 @@ async def process_annotation_request(
 ):
     """백그라운드에서 주석 생성 처리"""
     try:
-        # 주석 생성
+        # 주식 생성
         response = await service.generate_annotations(request)
         
         # TODO: Kafka로 응답 전송
