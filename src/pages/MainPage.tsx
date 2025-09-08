@@ -1,5 +1,5 @@
 // pages/MainPage.tsx (리팩토링된 버전)
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useRequireAuth } from '../hooks/auth/useAuth';
 import { useMainPage } from '../hooks/pages/useMainPage';
 import { MainLayout } from '../components/layout';
@@ -24,7 +24,6 @@ const MainPage: React.FC = () => {
     handleChatbotClick,
     handleSecurityClick
   } = useMainPage();
-
 
   return (
     <MainLayout
