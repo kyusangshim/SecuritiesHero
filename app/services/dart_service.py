@@ -23,7 +23,6 @@ from app.schemas.report import ReportListResponse
 # 환경변수 설정
 from app.config import settings
 MY_API_BASE_URL = settings.MY_API_BASE_URL
-MY_API_CORE_REPORTS = settings.MY_API_CORE_REPORTS
 DART_API_KEY = settings.DART_API_KEY
 
 
@@ -34,7 +33,7 @@ DART_API_KEY = settings.DART_API_KEY
 # 내 기업코드로 api에서 보고서 리스트 가져오기(json형태 안에 있음)
 def fetch_report_data_with_pydantic(code:str): # 테스트용 "01571107"
     # 파이썬 f-string 문법으로 수정
-    url = MY_API_CORE_REPORTS+f"{code}"
+    url = MY_API_BASE_URL+f"/api/dart/reports/core?corp_code={code}"
     response = requests.get(url)
     response.raise_for_status()
     

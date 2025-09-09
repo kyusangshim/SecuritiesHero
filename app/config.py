@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "fastapi_ai.log"
     
+    # --- 🔹 spring 백엔드와 연동 🔹 ---
+    MY_API_BASE_URL: str
+    
     class Config:
         # .env 파일을 읽어서 환경변수처럼 사용하도록 설정
         env_file = ".env"
