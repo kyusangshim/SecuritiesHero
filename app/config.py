@@ -15,18 +15,19 @@ class Settings(BaseSettings):
     # --- 🔹 AI 및 LLM 설정 🔹 ---
     AI_MODEL: str = "deepseek/deepseek-chat-v3.1:free"
     AI_TEMPERATURE: float = 0.7
-    AI_MAX_TOKENS: int = 1500
+    AI_MAX_TOKENS: int = 1600
     LLM_TIMEOUT_SECONDS: int = 120
     
     # --- 🔹 OpenSearch 설정 🔹 ---
-    OPENSEARCH_HOST: str = "localhost"
+    OPENSEARCH_HOST: str = "192.168.0.77"  # .env와 일치
     OPENSEARCH_PORT: int = 9200
     OPENSEARCH_USER: str = "admin"
     OPENSEARCH_PASSWORD: str = "admin"
     OPENSEARCH_SCHEME: str = "http"
     OPENSEARCH_USE_SSL: bool = False
     OPENSEARCH_TIMEOUT_SECONDS: int = 30
-    OS_HOST: str = "http://localhost:9200"
+    OPENSEARCH_URI: str = "http://192.168.0.77:9200"  # .env에서 추가된 설정
+    OS_HOST: str = "http://192.168.0.77:9200"
     
     # --- 🔹 Kafka 설정 (오류 해결) 🔹 ---
     KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
