@@ -37,7 +37,6 @@ class Settings(BaseSettings):
 
     # --- 🔹 외부 API 설정 🔹 ---
     MY_API_BASE_URL: str = "http://localhost:8080"
-    MY_API_CORE_REPORTS: str = "http://localhost:8080/api/reports"
     
     # --- 🔹 서버 및 디버그 설정 🔹 ---
     SERVER_HOST: str = "0.0.0.0"
