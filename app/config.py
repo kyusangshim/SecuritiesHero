@@ -13,40 +13,35 @@ class Settings(BaseSettings):
     DART_API_KEY: str
 
     # --- 🔹 AI 및 LLM 설정 🔹 ---
-    AI_MODEL: str = "deepseek/deepseek-chat-v3.1:free"
-    AI_TEMPERATURE: float = 0.7
-    AI_MAX_TOKENS: int = 1600
-    LLM_TIMEOUT_SECONDS: int = 120
+    AI_MODEL: str
+    AI_TEMPERATURE: float
+    AI_MAX_TOKENS: int
+    LLM_TIMEOUT_SECONDS: int
     
     # --- 🔹 OpenSearch 설정 🔹 ---
-    OPENSEARCH_HOST: str = "192.168.0.77"  # .env와 일치
-    OPENSEARCH_PORT: int = 9200
-    OPENSEARCH_USER: str = "admin"
-    OPENSEARCH_PASSWORD: str = "admin"
-    OPENSEARCH_SCHEME: str = "http"
-    OPENSEARCH_USE_SSL: bool = False
+    # ngrok HTTPS URL만 사용 (예: https://xxxxx.ngrok.io)
+    OPENSEARCH_URI: str  # 전체 URL만 필요
     OPENSEARCH_TIMEOUT_SECONDS: int = 30
-    OPENSEARCH_URI: str = "http://192.168.0.77:9200"  # .env에서 추가된 설정
-    OS_HOST: str = "http://192.168.0.77:9200"
-    
+ 
     # --- 🔹 Kafka 설정 (오류 해결) 🔹 ---
-    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
-    KAFKA_CONSUMER_GROUP: str = "fastapi-equity-group"
-    KAFKA_REQUEST_TOPIC: str = "fastapi-equity-request"
-    KAFKA_RESPONSE_TOPIC: str = "fastapi-equity-response"
-    KAFKA_TIMEOUT_SECONDS: int = 60
+    KAFKA_BOOTSTRAP_SERVERS: str
+    KAFKA_CONSUMER_GROUP: str
+    KAFKA_REQUEST_TOPIC: str
+    KAFKA_RESPONSE_TOPIC: str
+    KAFKA_TIMEOUT_SECONDS: int
 
     # --- 🔹 외부 API 설정 🔹 ---
-    MY_API_BASE_URL: str = "http://localhost:8080"
-    
+
+    MY_API_BASE_URL: str
+
     # --- 🔹 서버 및 디버그 설정 🔹 ---
-    SERVER_HOST: str = "0.0.0.0"
-    SERVER_PORT: int = 8000
-    DEBUG: bool = True
+    SERVER_HOST: str
+    SERVER_PORT: int
+    DEBUG: bool
     
     # --- 🔹 로깅 설정 🔹 ---
-    LOG_LEVEL: str = "INFO"
-    LOG_FILE: str = "fastapi_ai.log"
+    LOG_LEVEL: str
+    LOG_FILE: str
     
     # --- 🔹 spring 백엔드와 연동 🔹 ---
     MY_API_BASE_URL: str
