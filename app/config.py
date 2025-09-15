@@ -31,8 +31,9 @@ class Settings(BaseSettings):
     KAFKA_TIMEOUT_SECONDS: int
 
     # --- 🔹 외부 API 설정 🔹 ---
+
     MY_API_BASE_URL: str
-    
+
     # --- 🔹 서버 및 디버그 설정 🔹 ---
     SERVER_HOST: str
     SERVER_PORT: int
@@ -41,6 +42,9 @@ class Settings(BaseSettings):
     # --- 🔹 로깅 설정 🔹 ---
     LOG_LEVEL: str
     LOG_FILE: str
+    
+    # --- 🔹 spring 백엔드와 연동 🔹 ---
+    MY_API_BASE_URL: str
     
     class Config:
         # .env 파일을 읽어서 환경변수처럼 사용하도록 설정

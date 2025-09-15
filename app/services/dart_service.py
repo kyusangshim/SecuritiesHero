@@ -120,20 +120,24 @@ def rept_down_by_list(rcept_no: str):
     response.raise_for_status()
     return response.content
 
-# 압축 해제 기능(파일을 받아서 압축해제하여 dict로 반환)
+# 압축 해제 기능(파일을 받아서 압축해제하여 _가 없는 1개만 dict로 반환)
 def extract_zip_file_to_dict(zip_data: bytes) -> Dict[str, str]:
     """
     압축 파일을 해제하고 XML 파일의 이름과 내용을 딕셔너리로 반환합니다.
-    { "파일_이름": "XML_내용", ... } 형식입니다.
+    언더스코어(_)가 포함된 XML 파일은 제외합니다.
+    { "rcept_no": "파일_이름", "content": "XML_내용" } 형식입니다.
     """
     xml_files_dict = {}
     
     try:
         zip_buffer = io.BytesIO(zip_data)
         with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
+            print(f"압축 파일 내의 파일 목록: {zip_file.namelist()}")
+            
             for file_name in zip_file.namelist():
-                # 파일 확장자가 '.xml'인 경우에만 처리
-                if file_name.endswith('.xml'):
+                # 파일 확장자가 '.xml'이고 언더스코어가 없는 경우에만 처리
+                if file_name.endswith('.xml') and '_' not in file_name:
+                    print(f"처리 대상 파일: {file_name}")
                     with zip_file.open(file_name) as xml_file:
                         try:
                             # 파일을 읽고 UTF-8로 디코딩
@@ -141,9 +145,13 @@ def extract_zip_file_to_dict(zip_data: bytes) -> Dict[str, str]:
                             # 딕셔너리에 파일명을 키로, 내용을 값으로 추가
                             xml_files_dict["rcept_no"] = file_name
                             xml_files_dict["content"] = xml_content
+                            break  # 첫 번째 유효한 XML 파일만 처리하고 종료
                         except UnicodeDecodeError:
                             print(f"경고: {file_name} 파일을 UTF-8로 디코딩할 수 없습니다. 건너뜁니다.")
                             continue
+                else:
+                    if file_name.endswith('.xml') and '_' in file_name:
+                        print(f"제외된 파일 (언더스코어 포함): {file_name}")
             
             return xml_files_dict
 
@@ -192,7 +200,6 @@ def test_service(corp_code: str):
 def xml_call(rcept_no: str) -> str:
     file=rept_down_by_list(rcept_no)
     unzip_file=extract_zip_file_to_dict(file)
-    
     # 딕셔너리에서 'content' 키의 값(XML 문자열)을 꺼내서 전달
     xml_content = unzip_file['content']
     html_content=convert_dart_xml_to_html_fragment(xml_content)
