@@ -92,7 +92,7 @@ async def test_opensearch_connection():
         
     except Exception as e:
         print(f"❌ OpenSearch 연결 실패: {str(e)}")
-        print("OpenSearch 서버가 실행 중인지 확인하세요 (http://localhost:9200)")
+        print("OpenSearch 서버가 실행 중인지 확인하세요 (http://192.168.0.77:9200")
         return False
 
 if __name__ == "__main__":
