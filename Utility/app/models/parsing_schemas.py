@@ -1,0 +1,36 @@
+RPT_MAPPINGS = {
+    "settings": {
+        "number_of_shards": 5,
+        "number_of_replicas": 0,
+        "analysis": {
+            "analyzer": {
+                "my_html_strip_analyzer": {
+                    "char_filter": ["html_strip"],
+                    "tokenizer": "standard",
+                    "filter": ["lowercase"],
+                }
+            }
+        }
+    },
+    "mappings": {
+        "properties": {
+            "doc_id": {"type": "keyword"},
+            "doc_name": {"type": "keyword"},
+            "doc_code": {"type": "keyword"},
+            "pub_date": {"type": "date", "format": "yyyyMMdd"},
+            "corp_code": {"type": "keyword"},
+            "corp_name": {"type": "keyword"},
+            "sections": {
+                "type": "nested",
+                "properties": {
+                    "sec_id": {"type": "keyword"},
+                    "sec_title": {"type": "text"},
+                    "sec_content": {
+                        "type": "text",
+                        "analyzer": "my_html_strip_analyzer",
+                    },
+                },
+            },
+        }
+    },
+}

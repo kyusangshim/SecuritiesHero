@@ -1,0 +1,66 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Python virtualenv
+.env
+.venv
+env/
+venv/
+myenv/ # 사용자 추가
+ENV/
+env.bak/
+venv.bak/
+
+# Secret files
+*.env # .env 파일들을 모두 무시 (가장 중요)
+.env.*
+secrets.toml
+
+# IDE / Editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# FastAPI / Uvicorn
+# 특별히 추가할 것은 없으나, uvicorn 로그 파일 등을 생성한다면 추가
+# *.log
+
+# 사용자 추가 항목 (정리)
+/report/
+/standard/
+/template/  # templete -> template 철자 수정
+*.xml
