@@ -1,22 +1,26 @@
-# SecuritiesHero
 <img width="1424" height="800" alt="image" src="https://github.com/user-attachments/assets/c67483b7-0a22-4e47-bef8-8078d2045518" />
 
-# Securities Hero (증권히어로) 🦸‍♂️
+<div align="center">
+
+# 🦸‍♂️ Securities Hero (증권히어로)
 ### AI 기반 증권신고서 자동 생성 및 분석 자동화 플랫폼
   
 **[ 🏆 더존 AX CAMP 1기 최종 프로젝트 '대상' 수상 ]** 
 
 <br />
 
-![Java](https://img.shields.io/badge/Java-17-007396?style=flat-square&logo=java)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-6DB33F?style=flat-square&logo=springboot)
-![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115.4-009688?style=flat-square&logo=fastapi)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
-![Kafka](https://img.shields.io/badge/Apache%20Kafka-3.7.1-231F20?style=flat-square&logo=apachekafka)
-![OpenSearch](https://img.shields.io/badge/OpenSearch-2.17.1-005EB8?style=flat-square&logo=opensearch)
+![Java](https://img.shields.io/badge/Java-17-007396?style=for-the-badge&logo=java&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Kafka](https://img.shields.io/badge/Apache%20Kafka-3.7.1-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)
 
-**AI 기반 증권신고서 자동 생성 및 분석 자동화 플랫폼** 방대한 기업 공시 데이터를 수집·파싱하고, LangGraph 기반의 멀티 에이전트 시스템을 통해 전문적인 증권신고서 초안 작성 및 검증 과정을 자동화합니다.
+</div>
+
+---
+
+## 🌟 Introduction
+**증권히어로**는 방대한 기업 공시 데이터를 수집·파싱하고, **LangGraph 기반의 멀티 에이전트 시스템**을 통해 전문적인 증권신고서 초안 작성 및 검증 과정을 혁신적으로 자동화하는 플랫폼입니다.
 
 ---
 
@@ -61,3 +65,9 @@ SecuritiesHero/
 - AI가 생성한 초안을 사용자가 직접 편집할 수 있으며, 수정 이력을 **버전별로 관리**하여 이전 상태로의 복구가 용이합니다.
 
 ---
+
+## 🎥 시연 영상
+
+[![Securities Hero Demo Video](https://img.youtube.com/vi/kbONGfd1nsM/0.jpg)](https://www.youtube.com/watch?v=kbONGfd1nsM)
+
+*이미지를 클릭하면 시연 영상(YouTube)으로 이동합니다.*
