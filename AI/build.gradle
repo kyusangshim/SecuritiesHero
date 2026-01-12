@@ -1,0 +1,67 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.4'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+
+}
+
+ext {
+    springAiVersion = '1.0.1'
+    langgraph4jVersion = '1.6.0-rc4'
+    opensearchVersion = '2.19.0'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Spring AI BOM (버전 관리)
+    implementation platform("org.springframework.ai:spring-ai-bom:${springAiVersion}")
+    implementation 'org.springframework.ai:spring-ai-starter-mcp-client'
+    implementation "org.springframework.ai:spring-ai-starter-model-openai"
+
+    //KAFKA
+    implementation 'org.springframework.kafka:spring-kafka'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    implementation 'software.amazon.msk:aws-msk-iam-auth:1.1.1'
+
+    // LangGraph4j
+    implementation "org.bsc.langgraph4j:langgraph4j-core:${langgraph4jVersion}"
+    implementation "org.bsc.langgraph4j:langgraph4j-spring-ai:${langgraph4jVersion}"
+
+    // Lombok
+    compileOnly "org.projectlombok:lombok"
+    annotationProcessor "org.projectlombok:lombok"
+
+    // 환경변수
+    implementation 'io.github.cdimascio:java-dotenv:5.1.1'
+
+    // OpenSearch
+    implementation "org.opensearch.client:opensearch-java:${opensearchVersion}"
+    implementation "org.opensearch.client:opensearch-rest-client:${opensearchVersion}"
+
+    // Apache HttpClient5
+    implementation "org.apache.httpcomponents.client5:httpclient5"
+    implementation "org.apache.httpcomponents.core5:httpcore5"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
